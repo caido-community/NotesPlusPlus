@@ -205,7 +205,6 @@ const CreateNewNoteOrFolder = function () {
 <template>
 
   <div id="plugin--notesplusplus">
-    <div id="wrapper">
     <ContextMenu ref="menu" :model="items" />
     <div class="tree-container" :class="{ treeShown: showTree, treeHide: !showTree}">
       <div  class="tree-collapse-button"  :class="{ collapsed: !showTree}" @click="collapse">
@@ -241,7 +240,6 @@ const CreateNewNoteOrFolder = function () {
         <Button type="button" label="Save" @click="CreateNewNoteOrFolder">Save</Button>
       </div>
     </Dialog>
-    </div>
   </div>
 </template>
 
@@ -265,7 +263,7 @@ const CreateNewNoteOrFolder = function () {
 }
 
 
-#wrapper {
+#plugin--notesplusplus {
   height: 100%;
   width: 100%;
   display: flex;
