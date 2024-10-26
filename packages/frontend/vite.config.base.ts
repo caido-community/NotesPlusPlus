@@ -21,11 +21,11 @@ export default defineConfig({
       },
     ],
   },
-  css: {
-    postcss: {
-      plugins: [
-        tailwindcss(),
-      ],
-    }
-  },
+  // css: {
+  //   postcss: {
+  //     plugins: [
+  //       tailwindcss(),
+  //     ],
+  //   }
+  // },
 });
