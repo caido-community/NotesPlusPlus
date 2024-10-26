@@ -2,14 +2,19 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { resolve } from "path";
 import tailwindcss from "tailwindcss";
-import prefixwrap from "postcss-prefixwrap";
 
 export default defineConfig({
   plugins: [
-    vue(),
+    vue()
   ],
+  optimizeDeps: {
+    include: ['highlight.js', 'vue-smart-suggest']
+  },
   resolve: {
     alias: [
+      // {
+      //   'vue-smart-suggest': resolve(__dirname, 'node_modules/vue-smart-suggest/lib/vue-smart-suggest.es.js'),
+      // },
       {
         find: "@",
         replacement: resolve(__dirname, "src"),
@@ -20,7 +25,6 @@ export default defineConfig({
     postcss: {
       plugins: [
         tailwindcss(),
-        prefixwrap("#plugin--authmatrix"),
       ],
     }
   },

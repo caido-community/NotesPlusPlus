@@ -2,6 +2,7 @@ import { defineApp } from "./app";
 import type { CaidoSDK } from "./types";
 
 export const init = (sdk: CaidoSDK) => {
+  sdk.backend.initProject()
   const app = defineApp(sdk);
 
   const root = document.createElement("div");

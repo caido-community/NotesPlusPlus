@@ -1,12 +1,5 @@
-@layer tailwind-base, authmatrix, tailwind-utilities;
-
-@layer tailwind-base {
-    @tailwind base;
-}
-
-@layer tailwind-utilities {
-    @tailwind components;
-    @tailwind utilities;
-}
-
-
+@import "./caido.css";
+@import "./primevue.css";
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
