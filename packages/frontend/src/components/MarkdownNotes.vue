@@ -78,7 +78,7 @@ const insertImageMarkdown = (dataUrl: string) => {
 
 
 
-let userMentionTrigger: Trigger = {};
+let userMentionTrigger: Trigger;
 async function listenForNewReplays() {
   const newReplays = Caido.graphql.updatedReplaySession({})
   for await (const newReplay:UpdatedReplaySessionSubscription of newReplays) {
@@ -133,7 +133,7 @@ function waitForElm(selector, detatch=true) {
       return resolve(document.querySelector(selector));
     }
 
-    const observer = new MutationObserver(mutations => {
+    const observer = new MutationObserver(() => {
       if (document.querySelector(selector)) {
         if( detatch ) {
           observer.disconnect();
@@ -149,7 +149,7 @@ function waitForElm(selector, detatch=true) {
   });
 }
 
-const handleInput = (event: Event) => {
+const handleInput = () => {
   fullContent.value = displayContent.value;
 };
 
@@ -232,7 +232,7 @@ watch(
       marked.use(markedAlert())
       marked.use(markedHighlight({
         langPrefix: 'hljs language-',
-        highlight(code, lang, info) {
+        highlight(code, lang) {
           const language = hljs.getLanguage(lang) ? lang : 'plaintext';
           return hljs.highlight(code, { language }).value;
         }

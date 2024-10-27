@@ -1,31 +1,29 @@
 <script setup lang="ts">
 import MarkdownNotes from "@/components/MarkdownNotes.vue";
-// import CIcon from "@coreui/icons-vue";
-// import {cilChevronDoubleLeft, cilChevronDoubleRight, cilPencil, cilX} from "@coreui/icons";
 import {computed, ref} from "vue";
 import Tree from 'primevue/tree';
-import { PrimeIcons } from '@primevue/core/api';
-import InputText from 'primevue/inputtext';
 import {getProjectId} from "@/utils/index.js";
 import {useSDK} from "@/plugins/sdk";
 import ContextMenu from 'primevue/contextmenu';
-import Dialog from 'primevue/dialog';
+import DynamicDialog from "primevue/dynamicdialog";
 import {uuid} from "@primevue/core";
+import ConfirmDialog from 'primevue/confirmdialog';
+import {useConfirm} from "primevue/useconfirm";
+import { useDialog } from 'primevue/usedialog';
+import CreateNoteOrFolderDialog from "@/components/CreateNoteOrFolderDialog.vue";
+import EditNoteNameDialog from "@/components/EditNoteNameDialog.vue";
 
+const sdk = useSDK();
+const dialog = useDialog();
 let showTree = ref(true);
 let menu = ref()
-let iconType = PrimeIcons.ANGLE_DOUBLE_LEFT;
+const nodes = ref([])
+
 function collapse() {
   console.log("Collapse");
   showTree.value = !showTree.value;
-  if( showTree.value ) {
-    iconType = PrimeIcons.ANGLE_DOUBLE_LEFT;
-  } else {
-    iconType = PrimeIcons.ANGLE_DOUBLE_RIGHT;
-  }
 }
 
-const sdk = useSDK();
 
 const notes =  sdk.backend.getNotesByProject(getProjectId()).then((data) => {
   console.log("PROJECT NOTES: "+data);
@@ -33,22 +31,16 @@ const notes =  sdk.backend.getNotesByProject(getProjectId()).then((data) => {
   console.log("ERROR FETCHING NOTES: "+err);
 })
 
-const nodes = ref([])
 
 function modifyNodeByKey(nodes, targetKey, operation) {
   if (!Array.isArray(nodes)) return nodes;
 
-  // Clone the array to maintain immutability
   return nodes.reduce((acc, node) => {
-    // If this is the target node, apply the operation
     if (node.key === targetKey) {
       const result = operation(node);
-      // If operation returns null/undefined, skip this node (delete)
-      // Otherwise use the modified node
       return result ? [...acc, result] : acc;
     }
 
-    // If node has children, recursively process them
     if (node.children) {
       const modifiedNode = {
         ...node,
@@ -57,62 +49,14 @@ function modifyNodeByKey(nodes, targetKey, operation) {
       return [...acc, modifiedNode];
     }
 
-    // Keep node unchanged
     return [...acc, node];
   }, []);
 }
 
-// Usage examples:
-
 // Delete operation
 function deleteNode() {
-  return null; // Returning null/undefined removes the node
-}
-
-// Edit operation (example: updating multiple properties)
-function editNodeProperties(updates) {
-  return (node) => ({
-    ...node,
-    ...updates
-  });
-}
-
-function searchNodeForKey(obj, key) {
-  console.log(obj, obj.key, key)
-  if (obj.key === key) {
-    return obj;
-  }
-
-  if ("children" in obj) {
-    console.log(obj, obj.children);
-    for( let i=0; i<obj.children.length; i++ ) {
-      const result = searchNodeForKey(obj.children[i], key);
-      if (result !== null) {
-        console.log("FOUND:",result);
-        return result;
-      }
-    }
-  }
-
   return null;
 }
-
-function searchNodesForKey(key) {
-  for( let i=0; i<nodes.value.length; i++ ) {
-    const result = searchNodeForKey(nodes.value[i], key);
-    if (result !== null) {
-      return result;
-    }
-  }
-  return null;
-}
-
-
-const remove = (node) => {
-  // Implement your remove logic here
-  console.log(`Remove node: ${node.id}`);
-};
-
 
 const nodeSelected = function(node) {
   console.log(node)
@@ -128,8 +72,6 @@ const handleRightClick = function (event, node) {
   menu.value.show(event);
 }
 
-const NotesCreationDialogVisible = ref(false);
-
 
 const contextMenuItems = computed(() => {
   let items = [{
@@ -137,7 +79,7 @@ const contextMenuItems = computed(() => {
     command: () => {
       console.log(selectedNode.value)
       creatingNewNoteOrFolder.value = 0;
-      NotesCreationDialogVisible.value = true
+      showCreateNoteOrFolderDialog()
     }
   },
     {
@@ -145,8 +87,7 @@ const contextMenuItems = computed(() => {
       command: () => {
         console.log(selectedNode.value)
         creatingNewNoteOrFolder.value = 1;
-        NotesCreationDialogVisible.value = true
-
+        showCreateNoteOrFolderDialog()
       }
     }];
 
@@ -160,10 +101,20 @@ const contextMenuItems = computed(() => {
           label: "Delete Folder",
           command: () => {
             console.log("DELETE FOLDER:",selectedNode.value)
-
+            if( selectedNode.value.children.length > 0 ) {
+              confirmDeleteFolderWithNotes()
+            } else {
+              confirmDelete()
+            }
           }
-
         },
+        {
+          label: "Edit Folder Name",
+          command: () => {
+            console.log("EDIT FOLDER:",selectedNode.value)
+            showEditNoteFolderNameDialog()
+          }
+        }
     )
   } else {
     // right click on note
@@ -173,7 +124,7 @@ const contextMenuItems = computed(() => {
           label: "Delete Note",
           command: () => {
             console.log("DELETE NOTE:",selectedNode.value)
-            nodes.value = modifyNodeByKey(nodes.value,selectedNode.value.key,deleteNode)
+            confirmDelete()
           }
 
         },
@@ -181,7 +132,7 @@ const contextMenuItems = computed(() => {
           label: "Edit Note Name",
           command: () => {
             console.log("EDIT NOTE:",selectedNode.value)
-
+            showEditNoteFolderNameDialog()
           }
         }
     )
@@ -190,47 +141,144 @@ const contextMenuItems = computed(() => {
 })
 
 
-const newNoteNameValue = ref(null)
-
 const computedNoteDialogHeader = computed(() => {
   return creatingNewNoteOrFolder.value ? "New Note Name" : "New Folder Name"
 })
 
-const CreateNewNoteOrFolder = function () {
-  NotesCreationDialogVisible.value = false
-  console.log("New " + (creatingNewNoteOrFolder.value ? "note" : "folder"), newNoteNameValue.value)
-  if(creatingNewNoteOrFolder.value) {
-    nodes.value.push(
-            {
-              key:uuid(),
-              data: newNoteNameValue.value,
-              label: newNoteNameValue.value,
-              icon: "pi pi-fw pi-file",
-              selectable: true,
-            }
-    )
-  } else {
-    nodes.value.push(
-        {
-          key:uuid(),
-          label: newNoteNameValue.value,
-          data: newNoteNameValue.value,
-          icon: "pi pi-fw pi-folder",
-          children: [
-            {
-              key:uuid(),
-              data: "Test",
-              label: "Test",
-              icon: "pi pi-fw pi-file",
-              selectable: true,
-            }
-          ]
-        },
-    )
-  }
-  newNoteNameValue.value = ""
+const confirm = useConfirm();
+
+
+const confirmDelete = () => {
+  confirm.require({
+    message: "Are you sure you want to delete this?",
+    header: "Confirm deletion",
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: {
+      label: "Cancel",
+      severity: "secondary",
+      outlined: true
+    },
+    acceptProps: {
+      label: "Confirm"
+    },
+    accept: () => {
+      nodes.value = modifyNodeByKey(nodes.value,selectedNode.value.key,deleteNode)
+    },
+  })
 }
 
+const confirmDeleteFolderWithNotes = () => {
+  confirm.require({
+    message: "This folder has notes within it, are you sure you want to delete it?",
+    header: "Confirm delete non-empty folder",
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: {
+      label: "Cancel",
+      severity: "secondary",
+      outlined: true
+    },
+    acceptProps: {
+      label: "Confirm"
+    },
+    accept: () => {
+      nodes.value = modifyNodeByKey(nodes.value,selectedNode.value.key,deleteNode)
+    },
+  })
+}
+
+const showEditNoteFolderNameDialog = () => {
+  console.log("SHOW EDIT NOTE/FOLDER DIALOG")
+  const dialogRef = dialog.open(EditNoteNameDialog, {
+    props: {
+      header: computedNoteDialogHeader.value,
+      style: {
+        width: '25rem', background:'var(--c-bg-subtle)'
+      },
+      modal: true,
+      appendTo: 'self',
+    },
+    data: {
+      currentName: selectedNode.value.label,
+    },
+    onClose: (options) => {
+      const data = options.data;
+      if ( data ) {
+        console.log("New " + (creatingNewNoteOrFolder.value ? "note" : "folder") + " Name",data)
+        selectedNode.value.label = data
+        selectedNode.value.data = data
+      }
+    }
+  })
+  console.log(dialogRef)
+}
+
+
+
+const showCreateNoteOrFolderDialog = () => {
+  console.log("SHOW DIALOG")
+  const dialogRef = dialog.open(CreateNoteOrFolderDialog, {
+    props: {
+      header: computedNoteDialogHeader.value,
+      style: {
+        width: '25rem', background:'var(--c-bg-subtle)'
+      },
+      modal: true,
+      appendTo: 'self',
+    },
+    onClose: (options) => {
+      const data = options.data;
+      if ( data ) {
+        console.log("New " + (creatingNewNoteOrFolder.value ? "note" : "folder"),data)
+        if(creatingNewNoteOrFolder.value) {
+          if( selectedNode.value == null ) {
+            nodes.value.push(
+                {
+                  key:uuid(),
+                  data:data,
+                  label:data,
+                  icon: "pi pi-fw pi-file",
+                  selectable: true,
+                }
+            )
+          } else {
+            selectedNode.value.children.push({
+              key:uuid(),
+              data:data,
+              label:data,
+              icon: "pi pi-fw pi-file",
+              selectable: true,
+            })
+          }
+
+        } else {
+          if( selectedNode.value == null ) {
+
+            nodes.value.push(
+                {
+                  key: uuid(),
+                  label:data,
+                  data:data,
+                  icon: "pi pi-fw pi-folder",
+                  children: []
+                },
+            )
+          } else {
+            selectedNode.value.children.push(
+                {
+                  key: uuid(),
+                  label:data,
+                  data:data,
+                  icon: "pi pi-fw pi-folder",
+                  children: []
+                },
+            )
+          }
+        }
+      }
+    }
+  })
+  console.log(dialogRef)
+}
 
 
 </script>
@@ -241,42 +289,27 @@ const CreateNewNoteOrFolder = function () {
 
     <div class="tree-container" :class="{ treeShown: showTree, treeHide: !showTree}">
       <div  class="tree-collapse-button"  :class="{ collapsed: !showTree}" @click="collapse">
-        <i v-if="showTree.value" class="pi pi-angle-double-left"></i>
+        <i v-if="showTree == true" class="pi pi-angle-double-left"></i>
         <i v-else class="pi pi-angle-double-right"></i>
       </div>
       <div  class="tree-content" id="tree-content" v-show="showTree">
-        <Tree :pt="{pcFilterContainer:{root: 'border-gray-500 border-1'} }" id="NoteTree" @contextmenu="handleRightClick($event, null)" @nodeSelect="nodeSelected" :value="nodes" class="w-full mw-100" :style="{'height':'100%', 'background':'var(--c-bg-subtle)'}" selectionMode="single"  :filter="true" filterMode="strict" >
-          <template #default="slotProps">
-            <div  @contextmenu="handleRightClick($event, slotProps.node)">
-            <span>{{ slotProps.node.data }}</span>
-            </div>
-          </template>
+        <Tree :pt="{pcFilterContainer:{root: 'border-gray-500 border-1'}, nodeLabel:{style:'width: 100%' }, nodeContent: ({context}) => ({
+          onContextmenu: (event) => handleRightClick(event,context.node)
+        })}" id="NoteTree" @contextmenu="handleRightClick($event, null)" @nodeSelect="nodeSelected" :value="nodes" class="w-full mw-100" :style="{'height':'100%', 'background':'var(--c-bg-subtle)'}" selectionMode="single"  :filter="true" filterMode="strict" >
         </Tree>
       </div>
     </div>
     <div id="markdown-view">
       <MarkdownNotes/>
     </div>
-    <ContextMenu ref="menu" :model="contextMenuItems" append-to="self">
-<!--      <template #item="{ item, props }">-->
+    <ContextMenu ref="menu" :model="contextMenuItems" append-to="self"/>
+    <ConfirmDialog append-to="self"/>
+    <DynamicDialog append-to="self"/>
 
-<!--      </template>-->
-    </ContextMenu>
-    <Dialog v-model:visible="NotesCreationDialogVisible" modal :header="computedNoteDialogHeader" :style="{ width: '25rem', background:'var(--c-bg-subtle)' }" append-to="self">
-
-      <div class="flex items-center gap-4 mb-4 p-primary-color">
-        <InputText id="NoteOrFolderName" v-model="newNoteNameValue" class="flex-auto p-text-color" autocomplete="off" />
-      </div>
-      <div class="flex justify-end gap-2">
-        <Button type="button" label="Cancel" severity="secondary" @click="NotesCreationDialogVisible = false">Cancel</Button>
-        <Button type="button" label="Save" @click="CreateNewNoteOrFolder">Save</Button>
-      </div>
-    </Dialog>
   </div>
 </template>
 
 <style scoped>
-@import 'primeicons/primeicons.css';
 
 #markdown-view {
   width: 100%;
@@ -285,15 +318,6 @@ const CreateNewNoteOrFolder = function () {
 :root {
   --p-inputtext-filled-background: gray;
 }
-
-.hoverEdit:hover {
-  color: green;
-}
-
-.hoverDelete:hover {
-  color: red;
-}
-
 
 #plugin--notesplusplus {
   height: 100%;

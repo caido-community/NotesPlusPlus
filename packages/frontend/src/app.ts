@@ -7,6 +7,9 @@ import {client} from "@/utils/graphqlClient";
 import MarkdownNotesManager from "@/components/MarkdownNotesManager.vue";
 import {PrimeVue} from "@primevue/core";
 import { Classic } from "@caido/primevue";
+import 'primeicons/primeicons.css';
+import ConfirmationService from 'primevue/confirmationservice';
+import DialogService from 'primevue/dialogservice';
 
 export const defineApp = (sdk: CaidoSDK) => {
   const app = createApp({
@@ -15,6 +18,8 @@ export const defineApp = (sdk: CaidoSDK) => {
     },
     render: () => h(MarkdownNotesManager),
   });
+  app.use(ConfirmationService);
+  app.use(DialogService);
   app.use(SDKPlugin, sdk);
   app.use(PrimeVue, {
     unstyled: true,

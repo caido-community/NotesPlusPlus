@@ -1,7 +1,6 @@
 import type { DefineAPI, SDK } from "caido:plugin";
 import {saveNote, initProject, getNotesByProject} from "./storage/databaseAccess";
 
-export type { BackendEvents } from "./types";
 
 export type API = DefineAPI<{
   saveNote: typeof saveNote;
