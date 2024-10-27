@@ -70,3 +70,13 @@
     --c-surface-800: 224deg 10% 21%;
     --c-surface-900: 225deg 10% 16%;
 }
+
+
+
+.smart-suggest-item {
+    background-color: var(--c-bg-default);
+}
+
+.smart-suggest-item-active {
+    background-color: red;
+}

@@ -39,14 +39,17 @@
     "primevue": "4.1.1",
     "shared": "workspace:*",
     "tailwindcss-primeui": "^0.3.4",
+    "throttle-debounce": "^5.0.2",
     "vue": "3.5.12",
     "vue-smart-suggest": "^1.1.0",
+    "vue-uuid": "^3.0.0",
     "vuejs-tree": "^3.0.2"
   },
   "devDependencies": {
     "@caido/sdk-backend": "0.42.0",
     "@codemirror/view": "6.34.1",
     "@tailwindcss/typography": "^0.5.15",
+    "@types/throttle-debounce": "^5.0.2",
     "@vitejs/plugin-vue": "5.1.4",
     "backend": "workspace:*",
     "postcss-prefixwrap": "1.52.0",

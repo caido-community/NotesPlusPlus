@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref, computed, onMounted, onUnmounted, watch} from 'vue';
+import {ref, computed, onMounted, onUnmounted, watch, watchEffect} from 'vue';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
 import { markedHighlight } from "marked-highlight";
@@ -14,11 +14,39 @@ import {
 import { gql } from '@apollo/client/core';
 import {provideApolloClient, useSubscription} from "@vue/apollo-composable";
 import {client} from "@/utils/graphqlClient";
+import {useSDK} from "@/plugins/sdk";
+
+const sdk = useSDK();
+
+const props = defineProps({
+  note: {
+    type: Object,
+  }
+})
+
+const emit = defineEmits(['update:note'])
+
+const noteData = computed({
+  get: () => props.note,
+  set: (newValue) => emit('update:note', newValue)
+})
+
 
 let items = []
 const editorTextarea = ref<HTMLTextAreaElement | null>(null);
-const fullContent = ref('# Welcome to Markdown Editor\n\nStart typing your markdown here!\n\nTry pasting an image!');
+const fullContent = ref("");
 const displayContent = ref(fullContent.value);
+
+watch(
+    () => props.note,
+    (newNote) => {
+      console.log("NEW NOTE: ", newNote)
+      fullContent.value = newNote.text ;
+      displayContent.value = newNote.shortText ;
+    },
+    { deep: true } // Use deep watching if your node has nested properties
+)
+
 const DELETED_REPLAY_SESSION_SUBSCRIPTION = gql`
   subscription OnDeletedReplaySession {
     deletedReplaySession {
@@ -205,8 +233,6 @@ watch(
 
 
     onMounted(() => {
-
-
       const customLinkExtension = {
         name: 'ReplayLink',
         level: 'inline',
@@ -248,8 +274,21 @@ watch(
 
 
     const renderedMarkdown = computed(() => {
-      return marked(fullContent.value);
+      //return marked(fullContent.value);
+      console.log("RENDER MARKDOWN COMPUTE:",noteData.value)
+      if (noteData.value != undefined) {
+        return marked(noteData.value.text)
+      }
+      return marked("")
     });
+
+    const handleSave = function() {
+      console.log("SAVING NOTE FOR: ",props.note )
+      // sdk.backend.editNoteText(props.note.key,fullContent.value, displayContent.value).then((result) => {
+      //   console.log("SAVE NOTE RESULT: ",result);
+      // });
+      $emit('update:note', { ...nodeData, name: $event.target.value })
+    }
 </script>
 
 <style scoped>
@@ -265,8 +304,9 @@ watch(
           style="width: 100%; height: 100%; padding: 1em; resize: none"
           ref="editorTextarea"
           @paste="handlePaste"
-          v-model="displayContent"
+          v-model="noteData.text"
           @input="handleInput"
+          @keydown.ctrl.s.prevent="handleSave"
           class="editor-textarea"
           placeholder="Type your markdown here..."
       ></textarea>

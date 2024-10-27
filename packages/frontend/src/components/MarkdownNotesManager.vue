@@ -1,23 +1,42 @@
 <script setup lang="ts">
 import MarkdownNotes from "@/components/MarkdownNotes.vue";
-import {computed, ref} from "vue";
+import {computed, onMounted, onUnmounted, ref, watch} from "vue";
 import Tree from 'primevue/tree';
 import {getProjectId} from "@/utils/index.js";
 import {useSDK} from "@/plugins/sdk";
 import ContextMenu from 'primevue/contextmenu';
 import DynamicDialog from "primevue/dynamicdialog";
-import {uuid} from "@primevue/core";
 import ConfirmDialog from 'primevue/confirmdialog';
 import {useConfirm} from "primevue/useconfirm";
 import { useDialog } from 'primevue/usedialog';
 import CreateNoteOrFolderDialog from "@/components/CreateNoteOrFolderDialog.vue";
 import EditNoteNameDialog from "@/components/EditNoteNameDialog.vue";
+import { uuid } from 'vue-uuid';
+import MarkdownEditor from "@/components/MarkdownEditor.vue";
+import type {Caido} from "@caido/sdk-frontend";
+import {
+  DeletedReplaySessionPayload,
+  UpdatedReplaySessionSubscription
+} from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
+import {provideApolloClient, useSubscription} from "@vue/apollo-composable";
+import {client} from "@/utils/graphqlClient";
+import {handleCustomLinkClick} from "@/plugins/CustomLinkMarkedExtension";
+import {gql} from "@apollo/client/core";
+import * as repl from "node:repl";
 
 const sdk = useSDK();
 const dialog = useDialog();
 let showTree = ref(true);
 let menu = ref()
 const nodes = ref([])
+
+const DELETED_REPLAY_SESSION_SUBSCRIPTION = gql`
+  subscription OnDeletedReplaySession {
+    deletedReplaySession {
+      deletedSessionId
+    }
+  }
+`;
 
 function collapse() {
   console.log("Collapse");
@@ -26,40 +45,60 @@ function collapse() {
 
 
 const notes =  sdk.backend.getNotesByProject(getProjectId()).then((data) => {
-  console.log("PROJECT NOTES: "+data);
+  console.log("PROJECT NOTES: ",data);
+  let node;
+  for (let i = 0; i < data.length; i++) {
+    node = {
+      key:data[i].id,
+      text: data[i].noteText,
+      shortText: data[i].noteShortText,
+      data:data[i].noteName,
+      label:data[i].noteName,
+      icon: "pi pi-fw "+(data[i].isFolder ? 'pi-folder' : 'pi-file'),
+      selectable: !data[i].isFolder,
+    }
+    if (data[i].isFolder) {
+      node.children = []
+    }
+    if ( data[i].parentId == 0) {
+      console.log("Adding root node:",node)
+      nodes.value.push(node)
+    } else {
+      console.log("appending node:",node, " to node of id: ",data[i].parentId)
+      const { node: foundNode } = findNodeById(nodes.value,data[i].parentId) || {}
+      if (foundNode) {
+        foundNode.children.push(node)
+      }
+    }
+  }
 }).catch((err) => {
   console.log("ERROR FETCHING NOTES: "+err);
 })
 
 
-function modifyNodeByKey(nodes, targetKey, operation) {
-  if (!Array.isArray(nodes)) return nodes;
-
-  return nodes.reduce((acc, node) => {
-    if (node.key === targetKey) {
-      const result = operation(node);
-      return result ? [...acc, result] : acc;
+const findNodeById = (nodes, id, parent = null) => {
+  for (const node of nodes) {
+    if (node.key === id) {
+      return { node, parent }
     }
 
-    if (node.children) {
-      const modifiedNode = {
-        ...node,
-        children: modifyNodeByKey(node.children, targetKey, operation)
-      };
-      return [...acc, modifiedNode];
+    if (node.children && node.children.length > 0) {
+      const result = findNodeById(node.children, id, node)
+      if (result) {
+        return result
+      }
     }
-
-    return [...acc, node];
-  }, []);
+  }
+  return null
 }
 
-// Delete operation
-function deleteNode() {
-  return null;
-}
 
 const nodeSelected = function(node) {
-  console.log(node)
+  if ( node.selectable ) {
+    console.log("SELECTED: ",node)
+    selectedNode.value = node
+
+  }
 }
 
 const selectedNode = ref();
@@ -162,7 +201,22 @@ const confirmDelete = () => {
       label: "Confirm"
     },
     accept: () => {
-      nodes.value = modifyNodeByKey(nodes.value,selectedNode.value.key,deleteNode)
+      const { node: foundNode, parent } = findNodeById(nodes.value,selectedNode.value.key) || {}
+      console.log(foundNode,parent)
+      if (foundNode) {
+        sdk.backend.deleteNote(foundNode.key).then((result) => {
+          console.log("DELETE RESULT: ",result)
+        })
+        if (parent) {
+          parent.children = parent.children.filter((obj) => {
+            return obj.key !== foundNode.key
+          })
+        } else {
+          nodes.value = nodes.value.filter((obj) => {
+            return obj.key !== foundNode.key
+          })
+        }
+      }
     },
   })
 }
@@ -181,7 +235,22 @@ const confirmDeleteFolderWithNotes = () => {
       label: "Confirm"
     },
     accept: () => {
-      nodes.value = modifyNodeByKey(nodes.value,selectedNode.value.key,deleteNode)
+      const { node: foundNode, parent } = findNodeById(nodes.value,selectedNode.value.key) || {}
+      console.log(foundNode,parent)
+      sdk.backend.deleteFolderAndChildren(foundNode.key).then((result) => {
+        console.log("DELETE RESULT: ",result)
+      })
+      if (foundNode) {
+        if (parent) {
+          parent.children = parent.children.filter((obj) => {
+            return obj.key !== foundNode.key
+          })
+        } else {
+          nodes.value = nodes.value.filter((obj) => {
+            return obj.key !== foundNode.key
+          })
+        }
+      }
     },
   })
 }
@@ -204,6 +273,9 @@ const showEditNoteFolderNameDialog = () => {
       const data = options.data;
       if ( data ) {
         console.log("New " + (creatingNewNoteOrFolder.value ? "note" : "folder") + " Name",data)
+        sdk.backend.editNoteName(selectedNode.value.key,data).then((result) => {
+          console.log("EDIT RESULT: ",result)
+        })
         selectedNode.value.label = data
         selectedNode.value.data = data
       }
@@ -229,49 +301,59 @@ const showCreateNoteOrFolderDialog = () => {
       const data = options.data;
       if ( data ) {
         console.log("New " + (creatingNewNoteOrFolder.value ? "note" : "folder"),data)
+        const noteKey = uuid.v4()
         if(creatingNewNoteOrFolder.value) {
           if( selectedNode.value == null ) {
             nodes.value.push(
                 {
-                  key:uuid(),
+                  text:"",
+                  shortText:"",
+                  key:noteKey,
                   data:data,
                   label:data,
                   icon: "pi pi-fw pi-file",
                   selectable: true,
                 }
             )
+            sdk.backend.saveNote(noteKey,"",data,getProjectId(),0,false).then((result) => {console.log("SAVE ROOT NOTE RESULT:",result)})
           } else {
             selectedNode.value.children.push({
-              key:uuid(),
+              text:"",
+              shortText:"",
+              key:noteKey,
               data:data,
               label:data,
               icon: "pi pi-fw pi-file",
               selectable: true,
             })
+            sdk.backend.saveNote(noteKey,"",data,getProjectId(),selectedNode.value.key,false).then((result) => {console.log("SAVE FOLDER NOTE RESULT:",result)})
           }
-
         } else {
           if( selectedNode.value == null ) {
 
             nodes.value.push(
                 {
-                  key: uuid(),
+                  key: noteKey,
                   label:data,
                   data:data,
                   icon: "pi pi-fw pi-folder",
                   children: []
                 },
             )
+            sdk.backend.saveNote(noteKey,"",data,getProjectId(),0,true).then((result) => {console.log("SAVE ROOT FOLDER RESULT:",result)})
+
           } else {
             selectedNode.value.children.push(
                 {
-                  key: uuid(),
+                  key: noteKey,
                   label:data,
                   data:data,
                   icon: "pi pi-fw pi-folder",
                   children: []
                 },
             )
+            sdk.backend.saveNote(noteKey,"",data,getProjectId(),selectedNode.value.key,true).then((result) => {console.log("SAVE SUB-FOLDER RESULT:",result)})
+
           }
         }
       }
@@ -279,6 +361,82 @@ const showCreateNoteOrFolderDialog = () => {
   })
   console.log(dialogRef)
 }
+
+const noteUpdate = function(newNote) {
+  console.log("SAVED NOTE: ",newNote)
+  sdk.backend.editNoteText(newNote.key,newNote.text, newNote.shortText).then((result) => {
+    console.log("SAVE NOTE RESULT: ",result);
+  });
+}
+
+const replays = ref([])
+
+async function listenForNewReplays() {
+  const newReplays = Caido.graphql.updatedReplaySession({})
+  for await (const newReplay:UpdatedReplaySessionSubscription of newReplays) {
+    console.log("UPDATED REPLAY:",newReplay);
+    let found = false;
+    for(let i=0; i < replays.value.length; i++) {
+      if( replays.value[i].id == newReplay.updatedReplaySession.sessionEdge.node.id) {
+        console.log("already exists, updating")
+        found = true;
+        replays.value[i] = {
+          value: `@[${newReplay.updatedReplaySession.sessionEdge.node.name}]`,
+          label: newReplay.updatedReplaySession.sessionEdge.node.name,
+          searchMatch: newReplay.updatedReplaySession.sessionEdge.node.name,
+          id: newReplay.updatedReplaySession.sessionEdge.node.id}
+      }
+    }
+    if(!found) {
+      console.log("new replay, adding")
+      replays.value.push({
+        value: `@[${newReplay.updatedReplaySession.sessionEdge.node.name}]`,
+        label: newReplay.updatedReplaySession.sessionEdge.node.name,
+        searchMatch: newReplay.updatedReplaySession.sessionEdge.node.name,
+        id: newReplay.updatedReplaySession.sessionEdge.node.id})
+    }
+  }
+}
+
+onMounted(() => {
+  const { result } =provideApolloClient(client)(() =>  {
+    console.log("GQL CLIENT: ",client)
+    return useSubscription(DELETED_REPLAY_SESSION_SUBSCRIPTION)
+  });
+
+  Caido.graphql.replaySessionCollections().then((collections) => {
+    console.log("Current replay sessions:",collections);
+    collections.replaySessionCollections.edges.forEach( (edge) => {
+      edge.node.sessions.forEach( (session) => {
+        replays.value.push({value: `@[${session.name}]`, label: session.name, searchMatch: session.name, id: session.id});
+      })
+    })
+  })
+
+
+  watch(
+      result,
+      (data: DeletedReplaySessionPayload) => {
+        console.log("watch:",data.deletedReplaySession);
+        let index:number =  replays.value.findIndex(x => x.id==data.deletedReplaySession.deletedSessionId);
+        if( index > -1 ) {
+          console.log("found, Removing")
+          replays.value.splice(index, 1);
+        }
+      }
+  )
+
+  listenForNewReplays()
+
+  document.addEventListener('click', handleCustomLinkClick);
+
+})
+
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleCustomLinkClick);
+});
+
 
 
 </script>
@@ -300,7 +458,7 @@ const showCreateNoteOrFolderDialog = () => {
       </div>
     </div>
     <div id="markdown-view">
-      <MarkdownNotes/>
+      <MarkdownEditor v-if="selectedNode" v-model:model="selectedNode" v-model:replays="replays" @update:note="noteUpdate" />
     </div>
     <ContextMenu ref="menu" :model="contextMenuItems" append-to="self"/>
     <ConfirmDialog append-to="self"/>

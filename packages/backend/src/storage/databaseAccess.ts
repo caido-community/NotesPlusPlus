@@ -1,21 +1,52 @@
 import {SDK} from "caido:plugin";
 import {Result} from "sqlite";
 
-export async function saveNote(sdk: SDK, noteText: string, noteName: string, project: string, parentId: number, isFolder: boolean): Promise<Result> {
+export async function saveNote(sdk: SDK, noteKey: string, noteText: string, noteName: string, project: string, parentId: number, isFolder: boolean): Promise<Result> {
     const db = await sdk.meta.db();
-    const statement = await db.prepare(`INSERT INTO NOTES (isFolder,parentId,noteName,noteText,projectId) VALUES(?,?,?,?,?)`)
-    const result  = await statement.run(isFolder ? 1 : 0,parentId,noteName,noteText ,project);
+    const statement = await db.prepare(`INSERT INTO NOTES (id,isFolder,parentId,noteName,noteText,projectId) VALUES(?,?,?,?,?,?)`)
+    const result  = await statement.run(noteKey, isFolder ? 1 : 0,parentId,noteName,noteText ,project);
     sdk.console.log(result)
     return result
+}
 
+export async function deleteNote(sdk: SDK, noteKey: string): Promise<Result> {
+    const db = await sdk.meta.db();
+    const statement = await db.prepare(`DELETE FROM NOTES WHERE id = ?`)
+    const result  = await statement.run(noteKey);
+    sdk.console.log(result)
+    return result
+}
+
+export async function deleteFolderAndChildren(sdk: SDK, noteKey: string): Promise<Result> {
+    const db = await sdk.meta.db();
+    const statement = await db.prepare(`DELETE FROM NOTES WHERE (id = ?) OR (parentId = ?)`)
+    const result  = await statement.run(noteKey,noteKey);
+    sdk.console.log(result)
+    return result
+}
+
+export async function editNoteName(sdk: SDK, noteKey: string, noteName: string): Promise<Result> {
+    const db = await sdk.meta.db();
+    const statement = await db.prepare(`UPDATE NOTES SET noteName = ? WHERE id = ?`)
+    const result  = await statement.run(noteName,noteKey);
+    sdk.console.log(result)
+    return result
+}
+
+export async function editNoteText(sdk: SDK, noteKey: string, noteText: string, noteShortText: string): Promise<Result> {
+    const db = await sdk.meta.db();
+    const statement = await db.prepare(`UPDATE NOTES SET noteText = ?, noteShortText = ? WHERE id = ?`)
+    const result  = await statement.run(noteText,noteShortText, noteKey);
+    sdk.console.log(result)
+    return result
 }
 
 export const getNotesByProject = async (sdk: SDK, project: string) => {
     sdk.console.log("Fetching notes for project: "+ project)
     const db = await sdk.meta.db();
-    const statement = await db.prepare(`SELECT * FROM NOTES WHERE projectId = ?`)
+    const statement = await db.prepare(`SELECT * FROM NOTES WHERE projectId = ? ORDER BY parentId`)
     const result = await statement.all(project)
-    sdk.console.log("RESULT: "+result)
+    sdk.console.log(result)
     return result
 }
 
@@ -26,11 +57,12 @@ export async function initProject(sdk: SDK) {
         db.exec(
             `CREATE TABLE IF NOT EXISTS NOTES 
                 (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id TEXT PRIMARY KEY,
                     isFolder BOOLEAN,
                     parentId INTEGER,
                     noteName TEXT,
                     noteText TEXT, 
+                    noteShortText TEXT,
                     projectId TEXT)
         `).then(() => {
             sdk.console.log("DONE WITH TABLE INIT")
