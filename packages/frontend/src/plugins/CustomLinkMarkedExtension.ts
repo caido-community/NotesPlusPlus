@@ -1,4 +1,8 @@
 import type {Caido} from "@caido/sdk-frontend";
+import {useSDK} from "@/plugins/sdk";
+import {
+    ReplaySession
+} from "@caido/sdk-frontend/src/types/replay";
 
 const customLinkExtension = {
     name: 'ReplayLink',
@@ -46,11 +50,24 @@ function waitForElm(selector, detatch=true) {
 
 const handleCustomLinkClick = (e: Event) => {
     const target = e.target as HTMLElement;
+    const sdk = useSDK();
+
     if (target.classList.contains('custom-link')) {
         e.preventDefault();
         const id = target.getAttribute('data-id');
         console.log(`Custom link clicked: ${id}`);
-        Caido.navigation.goTo("/replay");
+        const sessions:ReplaySession[] = Caido.replay.getSessions()
+        console.log("Sessions: ",sessions)
+        for(let session of sessions) {
+            console.log(session.name,id)
+            if( session.name == id) {
+                Caido.navigation.goTo("/replay");
+                Caido.replay.openTab(session.id)
+                break
+            }
+        }
+
+      /*  Caido.navigation.goTo("/replay");
         const event = new MouseEvent("mousedown", { button: 0 });
 
 
@@ -73,7 +90,7 @@ const handleCustomLinkClick = (e: Event) => {
                     // document.getElementsByClassName("c-request-header")[0].appendChild(wrapperDiv);
                 }
             }
-        });
+        });*/
     }
 };
 

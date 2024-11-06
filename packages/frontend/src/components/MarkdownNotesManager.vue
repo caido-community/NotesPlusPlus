@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import MarkdownNotes from "@/components/MarkdownNotes.vue";
 import {computed, onMounted, onUnmounted, ref, watch} from "vue";
 import Tree from 'primevue/tree';
 import {getProjectId} from "@/utils/index.js";
@@ -22,7 +21,6 @@ import {provideApolloClient, useSubscription} from "@vue/apollo-composable";
 import {client} from "@/utils/graphqlClient";
 import {handleCustomLinkClick} from "@/plugins/CustomLinkMarkedExtension";
 import {gql} from "@apollo/client/core";
-import * as repl from "node:repl";
 
 const sdk = useSDK();
 const dialog = useDialog();
@@ -172,6 +170,35 @@ const contextMenuItems = computed(() => {
           command: () => {
             console.log("EDIT NOTE:",selectedNode.value)
             showEditNoteFolderNameDialog()
+          }
+        },
+        {
+          label: "Export to PDF",
+          command: () => {
+            Caido.window.showToast("Coming Soon",{variant:"info"})
+          }
+        },
+        {
+          label: "Export to MD",
+          command: () => {
+            console.log("EXPORT to MD",selectedNode.value)
+            const blob = new Blob([selectedNode.value.text], { type: 'text/markdown' })
+
+            // Create a URL for the blob
+            const url = URL.createObjectURL(blob)
+
+            // Create a temporary link element
+            const link = document.createElement('a')
+            link.href = url
+            link.download = selectedNode.value.data+'.md'
+
+            // Programmatically click the link to trigger download
+            document.body.appendChild(link)
+            link.click()
+
+            // Clean up
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
           }
         }
     )
@@ -463,7 +490,6 @@ onUnmounted(() => {
     <ContextMenu ref="menu" :model="contextMenuItems" append-to="self"/>
     <ConfirmDialog append-to="self"/>
     <DynamicDialog append-to="self"/>
-
   </div>
 </template>
 

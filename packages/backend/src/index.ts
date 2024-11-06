@@ -9,7 +9,7 @@ import {
 } from "./storage/databaseAccess";
 
 
-export type API = DefineAPI<{
+export type backendAPI = DefineAPI<{
   saveNote: typeof saveNote;
   initProject: typeof initProject;
   getNotesByProject: typeof getNotesByProject;
@@ -19,7 +19,7 @@ export type API = DefineAPI<{
   editNoteText: typeof editNoteText;
 }>;
 
-export function init(sdk: SDK<API>) {
+export function init(sdk: SDK<backendAPI>) {
   sdk.api.register("saveNote", saveNote)
   sdk.api.register("initProject", initProject);
   sdk.api.register("getNotesByProject", getNotesByProject);

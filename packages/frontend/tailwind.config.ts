@@ -12,6 +12,7 @@ export default {
   plugins: [
     tailwindPrimeui,
     tailwindCaido,
+    //require("@tailwindcss/typography"),
   ],
 
   // Disable preflight to avoid conflicts when loaded in Caido
