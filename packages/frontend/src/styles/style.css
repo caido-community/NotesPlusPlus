@@ -6,3 +6,15 @@
 @import 'highlight.js/styles/github.css';
 @import "marked-admonition-extension/dist/index.css";
 @import "github-markdown-css/github-markdown.css";
+
+@media print {
+    body {
+        visibility: hidden !important;
+    }
+    #markdownView {
+        visibility: visible;
+        position: absolute;
+        left: 0;
+        top: 0;
+    }
+}

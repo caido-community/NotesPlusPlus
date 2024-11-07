@@ -1,28 +1,28 @@
 {
-  "id": "authmatrix",
-  "name": "AuthMatrix",
+  "id": "notesplusplus",
+  "name": "Notes++",
   "version": "0.1.4",
-  "description": "Grid-based authorization testing across multiple users and roles.",
+  "description": "Caido plugin for markdown based notes",
   "author": {
-    "name": "Caido Labs Inc.",
-    "email": "dev@caido.io",
-    "url": "https://github.com/caido-community/authmatrix"
+    "name": "_StaticFlow_",
+    "email": "tanner.barnes@kashx.io",
+    "url": "https://github.com/Static-Flow/CaidoNotesPlusPlus"
   },
   "plugins": [
     {
       "kind": "frontend",
-      "id": "authmatrix-frontend",
-      "name": "Authmatrix Frontend",
+      "id": "notes-plus-plus-frontend",
+      "name": "Notes++ Frontend",
       "entrypoint": "frontend/script.js",
       "style": "frontend/style.css",
       "backend": {
-        "id": "authmatrix-backend"
+        "id": "notes-plus-plus-backend"
       }
     },
     {
       "kind": "backend",
-      "id": "authmatrix-backend",
-      "name": "Authmatrix Backend",
+      "id": "notes-plus-plus-backend",
+      "name": "Notes++ Backend",
       "runtime": "javascript",
       "entrypoint": "backend/script.js"
     }

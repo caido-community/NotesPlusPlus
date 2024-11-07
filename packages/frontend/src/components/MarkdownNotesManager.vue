@@ -21,11 +21,13 @@ import {provideApolloClient, useSubscription} from "@vue/apollo-composable";
 import {client} from "@/utils/graphqlClient";
 import {handleCustomLinkClick} from "@/plugins/CustomLinkMarkedExtension";
 import {gql} from "@apollo/client/core";
+import {TreeNode} from "primevue/treenode";
 
 const sdk = useSDK();
 const dialog = useDialog();
 let showTree = ref(true);
 let menu = ref()
+const tree = ref(null);
 const nodes = ref([])
 
 const DELETED_REPLAY_SESSION_SUBSCRIPTION = gql`
@@ -176,6 +178,18 @@ const contextMenuItems = computed(() => {
           label: "Export to PDF",
           command: () => {
             Caido.window.showToast("Coming Soon",{variant:"info"})
+            const content = document.getElementById("markdownView").innerHTML
+
+            // Create an iframe
+            const iframe = document.createElement('iframe')
+            iframe.style.display = 'none'  // Make it invisible
+            document.body.appendChild(iframe)
+
+            const doc = iframe.contentDocument
+            doc.open()
+            doc.write(content)
+            doc.close()
+            iframe.contentWindow.print()
           }
         },
         {
@@ -464,7 +478,14 @@ onUnmounted(() => {
   document.removeEventListener('click', handleCustomLinkClick);
 });
 
-
+const filterFunction = function (node: TreeNode) {
+  console.log("FILTER NODE:",node, tree.value.filterValue);
+  if(tree.value.filterValue.startsWith("inText:")) {
+    return [node.text]
+  } else {
+    return [node.label]
+  }
+}
 
 </script>
 
@@ -480,7 +501,9 @@ onUnmounted(() => {
       <div  class="tree-content" id="tree-content" v-show="showTree">
         <Tree :pt="{pcFilterContainer:{root: 'border-gray-500 border-1'}, nodeLabel:{style:'width: 100%' }, nodeContent: ({context}) => ({
           onContextmenu: (event) => handleRightClick(event,context.node)
-        })}" id="NoteTree" @contextmenu="handleRightClick($event, null)" @nodeSelect="nodeSelected" :value="nodes" class="w-full mw-100" :style="{'height':'100%', 'background':'var(--c-bg-subtle)'}" selectionMode="single"  :filter="true" filterMode="strict" >
+        })}" id="NoteTree" @contextmenu="handleRightClick($event, null)" @nodeSelect="nodeSelected" :value="nodes" class="w-full mw-100"
+              :style="{'height':'100%', 'background':'var(--c-bg-subtle)'}" selectionMode="single"  :filter="true" filterMode="strict"
+              filterBy='label,text' ref="tree">
         </Tree>
       </div>
     </div>

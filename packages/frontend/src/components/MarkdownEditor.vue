@@ -52,6 +52,7 @@ const debouncedSave = debounce(10000,() => {
 const handleSave = function() {
   console.log("SAVING NOTE FOR: ",model.value )
   debouncedSave.cancel({ upcomingOnly: true });
+  Caido.window.showToast("Saved Note",{variant: "info"})
   emit('update:note', model.value )
 }
 
@@ -122,6 +123,7 @@ const showInfoModal = function () {
           class="bg-surface-700"
           v-model="model.text"
           @input="debouncedSave"
+          @blur="handleSave"
           @keydown.ctrl.s.prevent="handleSave"
           @paste="handlePaste"
           placeholder="Type your markdown here..."

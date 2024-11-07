@@ -1,8 +1,8 @@
 {
   "name": "backend",
   "version": "0.0.0",
-  "description": "Authmatrix backend",
-  "author": "Caido Labs Inc. <dev@caido.io>",
+  "description": "Notes++ Backend",
+  "author": "_StaticFlow_",
   "license": "CC0-1.0",
   "type": "module",
   "types": "src/index.ts",

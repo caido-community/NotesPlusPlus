@@ -1,8 +1,8 @@
 {
-  "name": "authmatrix",
+  "name": "notes-plus-plus",
   "version": "0.0.0",
-  "description": "Caido plugin for grid-based authorization testing across multiple users and roles",
-  "author": "Caido Labs Inc. <dev@caido.io>",
+  "description": "Caido plugin for markdown based notes",
+  "author": "_StaticFlow_",
   "license": "CC0-1.0",
   "type": "module",
   "scripts": {
