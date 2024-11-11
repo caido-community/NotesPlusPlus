@@ -7,15 +7,16 @@ import {markedHighlight} from "marked-highlight";
 import hljs from "highlight.js";
 import {SmartSuggest} from "vue-smart-suggest";
 import {customLinkExtension} from "@/plugins/CustomLinkMarkedExtension";
-import {storeImage,getImageUrl} from "@/utils/indexedDBClient";
+import {imagePasteMarkedExtension} from "@/plugins/ImagePasteMarkedExtension";
 import MarkdownExampleDialog from "@/components/MarkdownExampleDialog.vue";
 import {useDialog} from "primevue/usedialog";
 import markedAlert from "marked-alert";
+import {useSDK} from "@/plugins/sdk";
 
 const model = defineModel('model')
 const replays = defineModel('replays')
 const dialog = useDialog();
-
+const sdk = useSDK();
 
 
 
@@ -24,7 +25,7 @@ const userMentionTrigger = {
   items: replays.value,
 };
 
-marked.use({ extensions: [customLinkExtension] });
+marked.use({ extensions: [customLinkExtension, imagePasteMarkedExtension] });
 marked.use(markedAlert())
 marked.use(markedHighlight({
   langPrefix: 'hljs language-',
@@ -75,18 +76,16 @@ const handlePaste = async (event) => {
 
   if (imageFile) {
     try {
-      // Create a blob URL for the image
-      await storeImage(imageFile);
 
-      // Retrieve and display the stored image
-      const imageUrl = await getImageUrl(imageFile.name);
-      const markdownLink = `![${imageFile.name}](${imageUrl})`
-
-      const cursorPos = textarea.selectionStart;
-      const textBefore = model.value.text.substring(0, cursorPos);
-      const textAfter = model.value.text.substring(cursorPos);
-      model.value.text = textBefore + markdownLink + textAfter;
-      textarea.selectionStart = textarea.selectionEnd = cursorPos + markdownLink.length;
+      sdk.files.create(imageFile).then((res) => {
+        console.log("PASTE FILE SAVE:", res)
+        const markdownLink = `{${res.id}}`
+        const cursorPos = textarea.selectionStart;
+        const textBefore = model.value.text.substring(0, cursorPos);
+        const textAfter = model.value.text.substring(cursorPos);
+        model.value.text = textBefore + markdownLink + textAfter;
+        textarea.selectionStart = textarea.selectionEnd = cursorPos + markdownLink.length;
+      })
     } catch (error) {
       console.error('Error handling image paste:', error)
     }

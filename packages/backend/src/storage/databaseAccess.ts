@@ -1,5 +1,6 @@
 import {SDK} from "caido:plugin";
 import {Result} from "sqlite";
+import * as fs from "fs"; fs
 
 export async function saveNote(sdk: SDK, noteKey: string, noteText: string, noteName: string, project: string, parentId: number, isFolder: boolean): Promise<Result> {
     const db = await sdk.meta.db();
@@ -41,6 +42,17 @@ export async function editNoteText(sdk: SDK, noteKey: string, noteText: string, 
     return result
 }
 
+export const fetchImage = (sdk: SDK, filePath: string) => {
+    try {
+        // Read the file contents
+        const data = fs.readFileSync(filePath)
+        sdk.console.log(`FETCHED image data at ${filePath}: data:${getMimeType(filePath)};base64,${data.toString("base64")} `)
+        return `data:${getMimeType(filePath)};base64,${data.toString("base64")}`;
+    } catch (error) {
+        throw new Error(`Failed to create blob URL: ${error}`);
+    }
+}
+
 export const getNotesByProject = async (sdk: SDK, project: string) => {
     sdk.console.log("Fetching notes for project: "+ project)
     const db = await sdk.meta.db();
@@ -72,4 +84,16 @@ export async function initProject(sdk: SDK) {
     }).catch((error) => {
         sdk.console.error("ERROR: "+error)
     })
+}
+
+
+const getMimeType = (filePath: string) => {
+    const extension = filePath.split('.').pop().toLowerCase();
+    switch (extension) {
+        case 'png': return 'image/png';
+        case 'jpg':
+        case 'jpeg': return 'image/jpeg';
+        case 'gif': return 'image/gif';
+        default: return 'application/octet-stream';
+    }
 }

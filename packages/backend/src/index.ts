@@ -5,7 +5,7 @@ import {
   getNotesByProject,
   deleteNote,
   deleteFolderAndChildren,
-  editNoteName, editNoteText
+  editNoteName, editNoteText, fetchImage
 } from "./storage/databaseAccess";
 import {projectChangeListener} from "./storage/projectChangeListener";
 
@@ -20,6 +20,7 @@ export type backendAPI = DefineAPI<{
   deleteFolderAndChildren: typeof deleteFolderAndChildren;
   editNoteName: typeof editNoteName;
   editNoteText: typeof editNoteText;
+  fetchImage: typeof fetchImage;
 }>;
 
 export function init(sdk: SDK<backendAPI>) {
@@ -30,7 +31,7 @@ export function init(sdk: SDK<backendAPI>) {
   sdk.api.register("deleteFolderAndChildren", deleteFolderAndChildren);
   sdk.api.register("editNoteName", editNoteName);
   sdk.api.register("editNoteText",  editNoteText);
-
+  sdk.api.register("fetchImage", fetchImage);
   sdk.events.onProjectChange((sdk,project) => {
       sdk.console.log("backend project change: "+project);
       projectChangeListener(sdk,project);
