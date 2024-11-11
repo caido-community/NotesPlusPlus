@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@apollo/client": "^3.11.8",
+    "@bebiks/evenbetter-api": "^2.4.0",
     "@caido/primevue": "0.1.2",
     "@caido/sdk-frontend": "0.43.0",
     "@caido/tailwindcss": "^0.0.1",

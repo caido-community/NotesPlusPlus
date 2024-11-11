@@ -22,13 +22,14 @@ import {client} from "@/utils/graphqlClient";
 import {handleCustomLinkClick} from "@/plugins/CustomLinkMarkedExtension";
 import {gql} from "@apollo/client/core";
 import {TreeNode} from "primevue/treenode";
+import { EvenBetterAPI } from "@bebiks/evenbetter-api";
 
 const sdk = useSDK();
 const dialog = useDialog();
 let showTree = ref(true);
 let menu = ref()
 const tree = ref(null);
-const nodes = ref([])
+let nodes = ref([])
 
 const DELETED_REPLAY_SESSION_SUBSCRIPTION = gql`
   subscription OnDeletedReplaySession {
@@ -38,13 +39,18 @@ const DELETED_REPLAY_SESSION_SUBSCRIPTION = gql`
   }
 `;
 
+const evenBetterAPI = new EvenBetterAPI(sdk, {});
+
+
+
+
 function collapse() {
   console.log("Collapse");
   showTree.value = !showTree.value;
 }
 
 
-const notes =  sdk.backend.getNotesByProject(getProjectId()).then((data) => {
+sdk.backend.getNotesByProject(getProjectId()).then((data) => {
   console.log("PROJECT NOTES: ",data);
   let node;
   for (let i = 0; i < data.length; i++) {
@@ -75,6 +81,46 @@ const notes =  sdk.backend.getNotesByProject(getProjectId()).then((data) => {
   console.log("ERROR FETCHING NOTES: "+err);
 })
 
+evenBetterAPI.eventManager.on("onProjectChange", (newProject) => {
+  console.log("PROJECT CHANGE: ",newProject);
+  sdk.backend.getNotesByProject(newProject).then((data) => {
+    console.log("UPDATING NOTES: ",data);
+    nodes.value = [];
+    selectedNode.value = null;
+    let node;
+    for (let i = 0; i < data.length; i++) {
+      node = {
+        key:data[i].id,
+        text: data[i].noteText,
+        shortText: data[i].noteShortText,
+        data:data[i].noteName,
+        label:data[i].noteName,
+        icon: "pi pi-fw "+(data[i].isFolder ? 'pi-folder' : 'pi-file'),
+        selectable: !data[i].isFolder,
+      }
+      if (data[i].isFolder) {
+        node.children = []
+      }
+      if ( data[i].parentId == 0) {
+        console.log("Adding root node:",node)
+        nodes.value.push(node)
+      } else {
+        console.log("appending node:",node, " to node of id: ",data[i].parentId)
+        const { node: foundNode } = findNodeById(nodes.value,data[i].parentId) || {}
+        if (foundNode) {
+          foundNode.children.push(node)
+        }
+      }
+    }
+  }).catch((err) => {
+    console.log("ERROR FETCHING NOTES: "+err);
+  })
+});
+
+
+sdk.backend.onEvent("notes++:projectChange", (project) => {
+  console.log("PROJECT CHANGE: ",project)
+})
 
 const findNodeById = (nodes, id, parent = null) => {
   for (const node of nodes) {
