@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import {computed} from "vue";
 import {marked} from "marked";
 import { debounce } from 'throttle-debounce';
 import type { Caido } from "@caido/sdk-frontend";
@@ -12,6 +11,7 @@ import MarkdownExampleDialog from "@/components/MarkdownExampleDialog.vue";
 import {useDialog} from "primevue/usedialog";
 import markedAlert from "marked-alert";
 import {useSDK} from "@/plugins/sdk";
+import { computedAsync } from '@vueuse/core'
 
 const model = defineModel('model')
 const replays = defineModel('replays')
@@ -25,7 +25,26 @@ const userMentionTrigger = {
   items: replays.value,
 };
 
-marked.use({ extensions: [customLinkExtension, imagePasteMarkedExtension] });
+marked.use({
+  async: true,
+  async walkTokens(token) {
+    if( token.type === 'imagePasteMarkedExtension') {
+      for (let file of Caido.files.getAll()) {
+        console.log(`Checking for match between ${file.id} and ${token.id}`);
+        if (file.id === token.id) {
+          console.log("MATCH", file.path)
+          try {
+            token.fileName = file.name
+            token.dataUrl = await sdk.backend.fetchImage(file.path)
+          } catch (e) {
+            console.log("FILE LOAD ERROR: ", e);
+          }
+        }
+      }
+    }
+  },
+  extensions: [customLinkExtension, imagePasteMarkedExtension]
+});
 marked.use(markedAlert())
 marked.use(markedHighlight({
   langPrefix: 'hljs language-',
@@ -35,12 +54,12 @@ marked.use(markedHighlight({
   }
 }));
 
-const renderedMarkdown = computed(() => {
+const renderedMarkdown = computedAsync(async () => {
   console.log("RENDER MARKDOWN COMPUTE:",model.value.text)
   if (model.value.text != undefined) {
-    return marked(model.value.text)
+    return await marked.parse(model.value.text)
   }
-  return marked("")
+  return await marked("")
 });
 
 const emit = defineEmits(['update:note'])

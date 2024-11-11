@@ -1,6 +1,6 @@
 import {SDK} from "caido:plugin";
 import {Result} from "sqlite";
-import * as fs from "fs"; fs
+import { readFile } from 'fs/promises';
 
 export async function saveNote(sdk: SDK, noteKey: string, noteText: string, noteName: string, project: string, parentId: number, isFolder: boolean): Promise<Result> {
     const db = await sdk.meta.db();
@@ -42,13 +42,14 @@ export async function editNoteText(sdk: SDK, noteKey: string, noteText: string, 
     return result
 }
 
-export const fetchImage = (sdk: SDK, filePath: string) => {
+export const fetchImage = async (sdk: SDK, filePath: string) => {
     try {
-        // Read the file contents
-        const data = fs.readFileSync(filePath)
+        sdk.console.log("FETCHING image data at: "+filePath)
+        const data = await readFile(filePath)
         sdk.console.log(`FETCHED image data at ${filePath}: data:${getMimeType(filePath)};base64,${data.toString("base64")} `)
         return `data:${getMimeType(filePath)};base64,${data.toString("base64")}`;
     } catch (error) {
+        sdk.console.error("ERROR WITH IMAGE FETCH: "+error)
         throw new Error(`Failed to create blob URL: ${error}`);
     }
 }
