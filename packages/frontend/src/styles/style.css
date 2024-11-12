@@ -10,3 +10,11 @@
 #NoteTree input {
     width: 100%;
 }
+
+#markdownView ul {
+    list-style-type: circle;
+}
+
+.hljs {
+    color: white;
+}

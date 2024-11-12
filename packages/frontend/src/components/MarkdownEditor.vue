@@ -158,5 +158,4 @@ const showInfoModal = function () {
 <style scoped>
 @import 'highlight.js/styles/github.css';
 @import "marked-admonition-extension/dist/index.css";
-
 </style>
