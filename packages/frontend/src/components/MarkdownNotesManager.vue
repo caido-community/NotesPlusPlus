@@ -220,19 +220,33 @@ const contextMenuItems = computed(() => {
         {
           label: "Export to PDF",
           command: () => {
-            sdk.window.showToast("Coming Soon",{variant:"info"})
-            const content = document.getElementById("markdownView").innerHTML
+            let content = document.getElementById("markdownView").innerHTML
 
-            // Create an iframe
-            const iframe = document.createElement('iframe')
-            iframe.style.display = 'none'  // Make it invisible
-            document.body.appendChild(iframe)
+            const replayMapping = Promise.all(sdk.replay.getSessions().map(session => {
+              console.log("session:", session)
+              return sdk.graphql.request({id: session.id}).then((request) => {
+                console.log("Request: ", request)
+                content = content.replace(
+                    `<a href="#" class="custom-link" data-id="${session.name}">${session.name}</a>`,
+                    `<h3>Request for Replay: ${session.name}</h3><br><pre><code>${request.request.raw}</code></pre>`
+                )
+              })
+            }))
 
-            const doc = iframe.contentDocument
-            doc.open()
-            doc.write(content)
-            doc.close()
-            iframe.contentWindow.print()
+            Promise.all([replayMapping]).then(() => {
+
+              // Create an iframe
+              const iframe = document.createElement('iframe')
+              iframe.style.display = 'none'  // Make it invisible
+              document.body.appendChild(iframe)
+
+              const doc = iframe.contentDocument
+              doc.open()
+              doc.write(content)
+              doc.close()
+              iframe.contentWindow.print()
+            })
+
           }
         },
         {
@@ -242,14 +256,25 @@ const contextMenuItems = computed(() => {
 
             let content = selectedNode.value.text
 
-            const mapping = sdk.files.getAll().map((file) => {
+            const mapping = Promise.all(sdk.files.getAll().map((file) => {
               return sdk.backend.fetchImage(file).then((dataURL:String) => {
                 console.log("dataURL:",dataURL)
                 content = content.replace(`{${file.id}}`, `![${file.name}](${dataURL})`)
               })
-            })
+            }))
 
-            Promise.all(mapping).then(() => {
+            const replayMapping = Promise.all(sdk.replay.getSessions().map(session => {
+              console.log("session:", session)
+              return sdk.graphql.request({id: session.id}).then((request) => {
+                console.log("Request: ", request)
+                content = content.replace(
+                    `@[${session.name}]`,
+                    `### Request for Replay: ${session.name}\n\`\`\`\n${request.request.raw}\n\`\`\``
+                )
+              })
+            }))
+
+            Promise.all([mapping,replayMapping]).then(() => {
 
               console.log("Converted doc:\n "+content)
               const blob = new Blob([content], { type: 'text/markdown' })
