@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {marked} from "marked";
 import { debounce } from 'throttle-debounce';
-import type { Caido } from "@caido/sdk-frontend";
 import {markedHighlight} from "marked-highlight";
 import hljs from "highlight.js";
 import {SmartSuggest} from "vue-smart-suggest";
@@ -29,13 +28,13 @@ marked.use({
   async: true,
   async walkTokens(token) {
     if( token.type === 'imagePasteMarkedExtension') {
-      for (let file of Caido.files.getAll()) {
+      for (let file of sdk.files.getAll()) {
         console.log(`Checking for match between ${file.id} and ${token.id}`);
         if (file.id === token.id) {
           console.log("MATCH", file.path)
           try {
             token.fileName = file.name
-            token.dataUrl = await sdk.backend.fetchImage(file.path)
+            token.dataUrl = await sdk.backend.fetchImage(file)
           } catch (e) {
             console.log("FILE LOAD ERROR: ", e);
           }
@@ -65,14 +64,14 @@ const renderedMarkdown = computedAsync(async () => {
 const emit = defineEmits(['update:note'])
 
 const debouncedSave = debounce(10000,() => {
-  Caido.window.showToast("Auto-Saved Note",{variant: "info"})
+  sdk.window.showToast("Auto-Saved Note",{variant: "info"})
   emit('update:note', model.value )
 })
 
 const handleSave = function() {
   console.log("SAVING NOTE FOR: ",model.value )
   debouncedSave.cancel({ upcomingOnly: true });
-  Caido.window.showToast("Saved Note",{variant: "info"})
+  sdk.window.showToast("Saved Note",{variant: "info"})
   emit('update:note', model.value )
 }
 
@@ -112,7 +111,7 @@ const handlePaste = async (event) => {
 }
 
 const showInfoModal = function () {
-  const dialogRef = dialog.open(MarkdownExampleDialog, {
+  dialog.open(MarkdownExampleDialog, {
     props: {
       header: "Supported Markdown Features",
       style: {

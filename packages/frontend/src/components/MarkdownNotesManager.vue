@@ -12,16 +12,13 @@ import CreateNoteOrFolderDialog from "@/components/CreateNoteOrFolderDialog.vue"
 import EditNoteNameDialog from "@/components/EditNoteNameDialog.vue";
 import { uuid } from 'vue-uuid';
 import MarkdownEditor from "@/components/MarkdownEditor.vue";
-import type {Caido} from "@caido/sdk-frontend";
 import {
   DeletedReplaySessionPayload,
-  UpdatedReplaySessionSubscription
 } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
 import {provideApolloClient, useSubscription} from "@vue/apollo-composable";
 import {client} from "@/utils/graphqlClient";
 import {handleCustomLinkClick} from "@/plugins/CustomLinkMarkedExtension";
 import {gql} from "@apollo/client/core";
-import {TreeNode} from "primevue/treenode";
 import { EvenBetterAPI } from "@bebiks/evenbetter-api";
 
 const sdk = useSDK();
@@ -39,7 +36,7 @@ const DELETED_REPLAY_SESSION_SUBSCRIPTION = gql`
   }
 `;
 
-const evenBetterAPI = new EvenBetterAPI(sdk, {});
+const evenBetterAPI = new EvenBetterAPI(sdk,undefined);
 
 
 
@@ -223,7 +220,7 @@ const contextMenuItems = computed(() => {
         {
           label: "Export to PDF",
           command: () => {
-            Caido.window.showToast("Coming Soon",{variant:"info"})
+            sdk.window.showToast("Coming Soon",{variant:"info"})
             const content = document.getElementById("markdownView").innerHTML
 
             // Create an iframe
@@ -242,23 +239,37 @@ const contextMenuItems = computed(() => {
           label: "Export to MD",
           command: () => {
             console.log("EXPORT to MD",selectedNode.value)
-            const blob = new Blob([selectedNode.value.text], { type: 'text/markdown' })
 
-            // Create a URL for the blob
-            const url = URL.createObjectURL(blob)
+            let content = selectedNode.value.text
 
-            // Create a temporary link element
-            const link = document.createElement('a')
-            link.href = url
-            link.download = selectedNode.value.data+'.md'
+            const mapping = sdk.files.getAll().map((file) => {
+              return sdk.backend.fetchImage(file).then((dataURL:String) => {
+                console.log("dataURL:",dataURL)
+                content = content.replace(`{${file.id}}`, `![${file.name}](${dataURL})`)
+              })
+            })
 
-            // Programmatically click the link to trigger download
-            document.body.appendChild(link)
-            link.click()
+            Promise.all(mapping).then(() => {
 
-            // Clean up
-            document.body.removeChild(link)
-            URL.revokeObjectURL(url)
+              console.log("Converted doc:\n "+content)
+              const blob = new Blob([content], { type: 'text/markdown' })
+
+              // Create a URL for the blob
+              const url = URL.createObjectURL(blob)
+
+              // Create a temporary link element
+              const link = document.createElement('a')
+              link.href = url
+              link.download = selectedNode.value.data+'.md'
+
+              // Programmatically click the link to trigger download
+              document.body.appendChild(link)
+              link.click()
+
+              // Clean up
+              document.body.removeChild(link)
+              URL.revokeObjectURL(url)
+            })
           }
         }
     )
@@ -459,8 +470,8 @@ const noteUpdate = function(newNote) {
 const replays = ref([])
 
 async function listenForNewReplays() {
-  const newReplays = Caido.graphql.updatedReplaySession({})
-  for await (const newReplay:UpdatedReplaySessionSubscription of newReplays) {
+  const newReplays = sdk.graphql.updatedReplaySession({})
+  for await (const newReplay of newReplays) {
     console.log("UPDATED REPLAY:",newReplay);
     let found = false;
     for(let i=0; i < replays.value.length; i++) {
@@ -491,7 +502,7 @@ onMounted(() => {
     return useSubscription(DELETED_REPLAY_SESSION_SUBSCRIPTION)
   });
 
-  Caido.graphql.replaySessionCollections().then((collections) => {
+  sdk.graphql.replaySessionCollections().then((collections) => {
     console.log("Current replay sessions:",collections);
     collections.replaySessionCollections.edges.forEach( (edge) => {
       edge.node.sessions.forEach( (session) => {
@@ -504,8 +515,8 @@ onMounted(() => {
   watch(
       result,
       (data: DeletedReplaySessionPayload) => {
-        console.log("watch:",data.deletedReplaySession);
-        let index:number =  replays.value.findIndex(x => x.id==data.deletedReplaySession.deletedSessionId);
+        console.log("watch:",data);
+        let index:number =  replays.value.findIndex(x => x.id==data.deletedSessionId);
         if( index > -1 ) {
           console.log("found, Removing")
           replays.value.splice(index, 1);
@@ -523,15 +534,6 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleCustomLinkClick);
 });
-
-const filterFunction = function (node: TreeNode) {
-  console.log("FILTER NODE:",node, tree.value.filterValue);
-  if(tree.value.filterValue.startsWith("inText:")) {
-    return [node.text]
-  } else {
-    return [node.label]
-  }
-}
 
 </script>
 
@@ -586,7 +588,6 @@ const filterFunction = function (node: TreeNode) {
 }
 
 .treeShown {
-  //min-width: 300px; /* Adjust as needed */
   max-width: 10%;
 }
 
@@ -606,7 +607,6 @@ const filterFunction = function (node: TreeNode) {
   top: 50%;
   right: 0;
   transform: translateY(-50%);
-  //background-color: #007bff; /* Adjust color as needed */
   cursor: pointer;
   border-top-left-radius: 4px;
   border-bottom-left-radius: 4px;
@@ -614,6 +614,6 @@ const filterFunction = function (node: TreeNode) {
 }
 
 .tree-collapse-button.collapsed {
-  right: 0; /* Adjust based on the button's width */
+  right: 0;
 }
 </style>

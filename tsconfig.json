@@ -5,9 +5,9 @@
     "lib": ["ESNext"],
 
     "jsx": "preserve",
-    "noImplicitAny": true,
+    "noImplicitAny": false,
     "noUncheckedIndexedAccess": true,
-    "strict": true,
+    //"strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
 

@@ -17,4 +17,5 @@
 
 .hljs {
     color: white;
+    mix-blend-mode: difference;
 }
