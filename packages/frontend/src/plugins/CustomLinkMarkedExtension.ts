@@ -1,5 +1,4 @@
 import type {Caido} from "@caido/sdk-frontend";
-import {useSDK} from "@/plugins/sdk";
 import {
     ReplaySession
 } from "@caido/sdk-frontend/src/types/replay";
@@ -27,7 +26,6 @@ const customLinkExtension = {
 
 const handleCustomLinkClick = (e: Event) => {
     const target = e.target as HTMLElement;
-    const sdk = useSDK();
 
     if (target.classList.contains('custom-link')) {
         e.preventDefault();

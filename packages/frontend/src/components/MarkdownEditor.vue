@@ -35,6 +35,7 @@ marked.use({
           try {
             token.fileName = file.name
             token.dataUrl = await sdk.backend.fetchImage(file)
+            break
           } catch (e) {
             console.log("FILE LOAD ERROR: ", e);
           }
@@ -56,9 +57,9 @@ marked.use(markedHighlight({
 const renderedMarkdown = computedAsync(async () => {
   console.log("RENDER MARKDOWN COMPUTE:",model.value.text)
   if (model.value.text != undefined) {
-    return await marked.parse(model.value.text)
+    return marked(model.value.text);
   }
-  return await marked("")
+  return marked("")
 });
 
 const emit = defineEmits(['update:note'])
