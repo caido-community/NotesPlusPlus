@@ -7,6 +7,10 @@
 @import "marked-admonition-extension/dist/index.css";
 @import "github-markdown-css/github-markdown.css";
 
+h1 {
+    @apply text-2xl;
+}
+
 #NoteTree input {
     width: 100%;
 }

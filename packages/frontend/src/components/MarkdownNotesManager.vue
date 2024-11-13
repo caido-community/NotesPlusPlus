@@ -26,7 +26,7 @@ const sdk = useSDK();
 const dialog = useDialog();
 let showTree = ref(true);
 let menu = ref()
-const tree = ref(null);
+const tree = ref();
 let nodes = ref([])
 
 const DELETED_REPLAY_SESSION_SUBSCRIPTION = gql`
@@ -85,6 +85,7 @@ evenBetterAPI.eventManager.on("onProjectChange", (newProject) => {
     console.log("UPDATING NOTES: ",data);
     nodes.value = [];
     selectedNode.value = null;
+    selectedKey.value  = null;
     let node;
     for (let i = 0; i < data.length; i++) {
       node = {
@@ -141,17 +142,18 @@ const nodeSelected = function(node) {
   if ( node.selectable ) {
     console.log("SELECTED: ",node)
     selectedNode.value = node
-
   }
 }
 
 const selectedNode = ref();
+const rightClickNode = ref();
 const creatingNewNoteOrFolder = ref();
 
 
 const handleRightClick = function (event, node) {
-  console.log("RIGHT CLICK: ",event, node);
-  selectedNode.value = node;
+  console.log("RIGHT CLICK: ",event, node,tree.value.state, tree.value.context);
+  rightClickNode.value = node;
+  //selectedNode.value = node;
   menu.value.show(event);
 }
 
@@ -160,7 +162,7 @@ const contextMenuItems = computed(() => {
   let items = [{
     label: "New Folder",
     command: () => {
-      console.log(selectedNode.value)
+      console.log(rightClickNode.value)
       creatingNewNoteOrFolder.value = 0;
       showCreateNoteOrFolderDialog()
     }
@@ -168,23 +170,25 @@ const contextMenuItems = computed(() => {
     {
       label: "New Note",
       command: () => {
-        console.log(selectedNode.value)
+        console.log(rightClickNode.value)
         creatingNewNoteOrFolder.value = 1;
         showCreateNoteOrFolderDialog()
       }
     }];
 
-  console.log("SELECTED NODE: ",selectedNode.value)
+  console.log("SELECTED NODE: ",rightClickNode.value)
 
-  if (selectedNode.value == undefined ) {
+  if (rightClickNode.value == undefined ) {
+    // right click was in tree but not on node
     return items
-  } else if( selectedNode.value.children != null ) {
+  } else if( rightClickNode.value.children != null ) {
+    // right click was on a node
     items.push(
         {
           label: "Delete Folder",
           command: () => {
-            console.log("DELETE FOLDER:",selectedNode.value)
-            if( selectedNode.value.children.length > 0 ) {
+            console.log("DELETE FOLDER:",rightClickNode.value)
+            if( rightClickNode.value.children.length > 0 ) {
               confirmDeleteFolderWithNotes()
             } else {
               confirmDelete()
@@ -194,7 +198,7 @@ const contextMenuItems = computed(() => {
         {
           label: "Edit Folder Name",
           command: () => {
-            console.log("EDIT FOLDER:",selectedNode.value)
+            console.log("EDIT FOLDER:",rightClickNode.value)
             showEditNoteFolderNameDialog()
           }
         }
@@ -206,7 +210,7 @@ const contextMenuItems = computed(() => {
         {
           label: "Delete Note",
           command: () => {
-            console.log("DELETE NOTE:",selectedNode.value)
+            console.log("DELETE NOTE:",rightClickNode.value)
             confirmDelete()
           }
 
@@ -214,7 +218,7 @@ const contextMenuItems = computed(() => {
         {
           label: "Edit Note Name",
           command: () => {
-            console.log("EDIT NOTE:",selectedNode.value)
+            console.log("EDIT NOTE:",rightClickNode.value)
             showEditNoteFolderNameDialog()
           }
         },
@@ -253,9 +257,9 @@ const contextMenuItems = computed(() => {
         {
           label: "Export to MD",
           command: () => {
-            console.log("EXPORT to MD",selectedNode.value)
+            console.log("EXPORT to MD",rightClickNode.value)
 
-            let content = selectedNode.value.text
+            let content = rightClickNode.value.text
 
             const mapping = Promise.all(sdk.files.getAll().map((file) => {
               return sdk.backend.fetchImage(file).then((dataURL:String) => {
@@ -286,7 +290,7 @@ const contextMenuItems = computed(() => {
               // Create a temporary link element
               const link = document.createElement('a')
               link.href = url
-              link.download = selectedNode.value.data+'.md'
+              link.download = rightClickNode.value.data+'.md'
 
               // Programmatically click the link to trigger download
               document.body.appendChild(link)
@@ -325,7 +329,7 @@ const confirmDelete = () => {
       label: "Confirm"
     },
     accept: () => {
-      const { node: foundNode, parent } = findNodeById(nodes.value,selectedNode.value.key) || {}
+      const { node: foundNode, parent } = findNodeById(nodes.value,rightClickNode.value.key) || {}
       console.log(foundNode,parent)
       if (foundNode) {
         sdk.backend.deleteNote(foundNode.key).then((result) => {
@@ -359,7 +363,7 @@ const confirmDeleteFolderWithNotes = () => {
       label: "Confirm"
     },
     accept: () => {
-      const { node: foundNode, parent } = findNodeById(nodes.value,selectedNode.value.key) || {}
+      const { node: foundNode, parent } = findNodeById(nodes.value,rightClickNode.value.key) || {}
       console.log(foundNode,parent)
       sdk.backend.deleteFolderAndChildren(foundNode.key).then((result) => {
         console.log("DELETE RESULT: ",result)
@@ -391,17 +395,17 @@ const showEditNoteFolderNameDialog = () => {
       appendTo: 'self',
     },
     data: {
-      currentName: selectedNode.value.label,
+      currentName: rightClickNode.value.label,
     },
     onClose: (options) => {
       const data = options.data;
       if ( data ) {
         console.log("New " + (creatingNewNoteOrFolder.value ? "note" : "folder") + " Name",data)
-        sdk.backend.editNoteName(selectedNode.value.key,data).then((result) => {
+        sdk.backend.editNoteName(rightClickNode.value.key,data).then((result) => {
           console.log("EDIT RESULT: ",result)
         })
-        selectedNode.value.label = data
-        selectedNode.value.data = data
+        rightClickNode.value.label = data
+        rightClickNode.value.data = data
       }
     }
   })
@@ -427,6 +431,7 @@ const showCreateNoteOrFolderDialog = () => {
         console.log("New " + (creatingNewNoteOrFolder.value ? "note" : "folder"),data)
         const noteKey = uuid.v4()
         if(creatingNewNoteOrFolder.value) {
+          // creating a note
           const node = {
             text:"",
             shortText:"",
@@ -436,44 +441,56 @@ const showCreateNoteOrFolderDialog = () => {
             icon: "pi pi-fw pi-file",
             selectable: true,
           }
-          if( selectedNode.value == null ) {
+          if( rightClickNode.value == null ) {
+            // creating a root note
             nodes.value.push(node)
             sdk.backend.saveNote(noteKey,"",data,getProjectId(),0,false).then((result) => {
               console.log("SAVE ROOT NOTE RESULT:",result)
               selectedNode.value = node
+              selectedKey.value  = {
+                [node.key]: true
+              }
             })
           } else {
-            selectedNode.value.children.push(node)
-            sdk.backend.saveNote(noteKey,"",data,getProjectId(),selectedNode.value.key,false).then((result) => {
+            // creating a note in a folder
+            rightClickNode.value.children.push(node)
+            sdk.backend.saveNote(noteKey,"",data,getProjectId(),rightClickNode.value.key,false).then((result) => {
               console.log("SAVE FOLDER NOTE RESULT:",result)
               selectedNode.value = node
+              selectedKey.value  = {
+                [node.key]: true
+              }
             })
           }
         } else {
-          if( selectedNode.value == null ) {
-
+          // creating a folder
+          if( rightClickNode.value == null ) {
+            // creating a root folder
             nodes.value.push(
                 {
                   key: noteKey,
                   label:data,
                   data:data,
                   icon: "pi pi-fw pi-folder",
-                  children: []
+                  children: [],
+                  selectable: false,
                 },
             )
             sdk.backend.saveNote(noteKey,"",data,getProjectId(),0,true).then((result) => {console.log("SAVE ROOT FOLDER RESULT:",result)})
 
           } else {
-            selectedNode.value.children.push(
+            // creating subfolder
+            rightClickNode.value.children.push(
                 {
                   key: noteKey,
                   label:data,
                   data:data,
                   icon: "pi pi-fw pi-folder",
-                  children: []
+                  children: [],
+                  selectable: false,
                 },
             )
-            sdk.backend.saveNote(noteKey,"",data,getProjectId(),selectedNode.value.key,true).then((result) => {console.log("SAVE SUB-FOLDER RESULT:",result)})
+            sdk.backend.saveNote(noteKey,"",data,getProjectId(),rightClickNode.value.key,true).then((result) => {console.log("SAVE SUB-FOLDER RESULT:",result)})
 
           }
         }
@@ -558,6 +575,9 @@ onUnmounted(() => {
   document.removeEventListener('click', handleCustomLinkClick);
 });
 
+const selectedKey = ref(null);
+
+
 </script>
 
 <template>
@@ -573,8 +593,8 @@ onUnmounted(() => {
         <Tree :pt="{pcFilterContainer:{root: 'border-gray-500 border-1'}, nodeLabel:{style:'width: 100%' }, nodeContent: ({context}) => ({
           onContextmenu: (event) => handleRightClick(event,context.node)
         })}" id="NoteTree" @contextmenu="handleRightClick($event, null)" @nodeSelect="nodeSelected" :value="nodes" class="w-full mw-100"
-              :style="{'height':'100%', 'background':'var(--c-bg-subtle)'}" selectionMode="single"  :filter="true" filterMode="strict"
-              filterBy='label,text' ref="tree">
+              :style="{'height':'100%', 'background':'var(--c-bg-subtle)'}" selectionMode="single"   :filter="true" filterMode="strict"
+              filterBy='label,text' ref="tree" v-model:selectionKeys="selectedKey" >
         </Tree>
       </div>
     </div>
