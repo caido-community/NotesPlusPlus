@@ -6,6 +6,8 @@ import MarkdownExampleDialog from "@/components/MarkdownExampleDialog.vue";
 import {useDialog} from "primevue/usedialog";
 import {useSDK} from "@/plugins/sdk";
 import { computedAsync } from '@vueuse/core'
+import Splitter from 'primevue/splitter';
+import SplitterPanel from 'primevue/splitterpanel';
 
 const model = defineModel('model')
 const replays = defineModel('replays')
@@ -103,26 +105,32 @@ const vFocus = {
 
 <template>
   <div style="display: flex;height: 100%;width: 100%;">
-    <div class="flex-auto" style="flex: 1 1 auto; position: relative;">
-      <SmartSuggest :triggers="[userMentionTrigger]" style="width: 100%; height: 100%;" append-to="self">
-      <textarea
-          style="width: 100%; height: 100%; padding: 1em; resize: none"
-          class="bg-surface-700"
-          v-model="model.text"
-          v-focus
-          id="markdownEditorTextarea"
-          @input="debouncedSave"
-          @blur="handleSave"
-          @keydown.ctrl.s.prevent="handleSave"
-          @paste="handlePaste"
-          placeholder="Type your markdown here..."
-      />
-      </SmartSuggest>
-      <Button @click="showInfoModal" rounded class="pi pi-fw pi-info-circle absolute top-0 right-0 m-2" v-tooltip.bottom="'Markdown Help'"/>
-    </div>
-    <div class="flex-auto overflow-auto p-4 markdown-body" style="max-width: 50%; min-width: 50%; border: 0.5rem groove">
-      <div v-html="renderedMarkdown" id="markdownView"></div>
-    </div>
+    <Splitter style="width: 100%; height: 100%;">
+      <SplitterPanel>
+        <div class="flex-auto" style="height: 100%;flex: 1 1 auto; position: relative;">
+          <SmartSuggest :triggers="[userMentionTrigger]" style="width: 100%; height: 100%;" append-to="self">
+          <textarea
+              style="width: 100%; height: 100%; padding: 1em; resize: none"
+              class="bg-surface-700"
+              v-model="model.text"
+              v-focus
+              id="markdownEditorTextarea"
+              @input="debouncedSave"
+              @blur="handleSave"
+              @keydown.ctrl.s.prevent="handleSave"
+              @paste="handlePaste"
+              placeholder="Type your markdown here..."
+          />
+          </SmartSuggest>
+          <Button @click="showInfoModal" rounded class="pi pi-fw pi-info-circle absolute top-0 right-0 m-2" v-tooltip.bottom="'Markdown Help'"/>
+        </div>
+      </SplitterPanel>
+      <SplitterPanel>
+        <div class="flex-auto overflow-auto p-4 markdown-body" style="max-width: 50%; min-width: 50%; border: 0.5rem groove">
+          <div v-html="renderedMarkdown" id="markdownView"></div>
+        </div>
+      </SplitterPanel>
+    </Splitter>
   </div>
 </template>
 
