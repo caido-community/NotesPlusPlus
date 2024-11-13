@@ -20,6 +20,7 @@ import {client} from "@/utils/graphqlClient";
 import {handleCustomLinkClick} from "@/plugins/CustomLinkMarkedExtension";
 import {gql} from "@apollo/client/core";
 import { EvenBetterAPI } from "@bebiks/evenbetter-api";
+import Explainer from "@/components/Explainer.vue";
 
 const sdk = useSDK();
 const dialog = useDialog();
@@ -568,8 +569,8 @@ onUnmounted(() => {
 
     <div class="tree-container" :class="{ treeShown: showTree, treeHide: !showTree}">
       <div  class="tree-collapse-button"  :class="{ collapsed: !showTree}" @click="collapse">
-        <i v-if="showTree == true" class="pi pi-angle-double-left"></i>
-        <i v-else class="pi pi-angle-double-right"></i>
+        <i v-if="showTree == true" class="pi pi-angle-double-left" :style="{'margin-right':'.5em'}"></i>
+        <i v-else class="pi pi-angle-double-right" :style="{'margin-right':'.5em'}"></i>
       </div>
       <div  class="tree-content" id="tree-content" v-show="showTree">
         <Tree :pt="{pcFilterContainer:{root: 'border-gray-500 border-1'}, nodeLabel:{style:'width: 100%' }, nodeContent: ({context}) => ({
@@ -582,6 +583,7 @@ onUnmounted(() => {
     </div>
     <div id="markdown-view">
       <MarkdownEditor v-if="selectedNode" v-model:model="selectedNode" v-model:replays="replays" @update:note="noteUpdate" />
+      <Explainer v-else />
     </div>
     <ContextMenu ref="menu" :model="contextMenuItems" append-to="self"/>
     <ConfirmDialog append-to="self"/>
