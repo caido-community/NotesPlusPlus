@@ -1,17 +1,12 @@
 <script setup lang="ts">
-import {ref, inject, onMounted} from "vue";
-import {marked} from "@/utils/marked";
+
+
+import {ref} from "vue";
 import {computedAsync} from "@vueuse/core";
-
-const dialogRef = inject("dialogRef");
-
-onMounted(() => {
-  console.log("DIALOG BUILT")
-
-});
+import {marked} from "@/utils/marked";
 
 const exampleMarkdown = ref(
-  `
+    `
   # Text Formatting
 
 To make text **bold**, wrap it in double asterisks like this: \`**bold**\`
@@ -165,24 +160,35 @@ Simply copy an image to your clipboard and paste it into the markdown note. Note
 )
 
 const renderedMarkdown = computedAsync(async () => {
-    return marked(exampleMarkdown.value)
+  return marked(exampleMarkdown.value)
 });
 
 </script>
 
 <template>
-  <div style="width:100%;height:100%;">
-    <div style="display: flex;height: 100%;width: 100%;">
-      <div class="flex-auto" style="flex: 1 1 auto; position: relative;">
+  <div style="height: 100%;width: 100%;text-align: center">
+    <h1> Welcome to Notes++ </h1>
+    <br>
+    <div style="width: 80%;margin:auto;padding-bottom: 5em;">
+      This plugin provides rich note capabilities with the power of Markdown!
+      Below you'll see an example of what is capable within a note.
+      <br>
+      <br>
+      To get started, right click on the Tree to the left to create a new note or folder!
+    </div>
+    <div style="width:80%;height:80%;margin:auto;">
+      <div style="display: flex;height: 100%;width: 100%;">
+        <div class="flex-auto" style="flex: 1 1 auto; position: relative;">
       <textarea
           style="width: 100%; height: 100%; padding: 1em; resize: none"
           v-model="exampleMarkdown"
           class="bg-surface-700"
           disabled
       />
-      </div>
-      <div class="flex-auto overflow-auto p-4 markdown-body" style="max-width: 50%; min-width: 50%; border: 0.5rem groove">
-        <div id="markdownView" v-html="renderedMarkdown"></div>
+        </div>
+        <div class="flex-auto overflow-auto p-4 markdown-body" style="max-width: 50%; min-width: 50%; border: 0.5rem groove">
+          <div id="markdownView" v-html="renderedMarkdown"></div>
+        </div>
       </div>
     </div>
   </div>

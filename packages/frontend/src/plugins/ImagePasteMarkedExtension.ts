@@ -2,7 +2,7 @@ const imagePasteMarkedExtension = {
     name: 'imagePasteMarkedExtension',
     level: 'inline',
     start(src: string) {
-        return src.match(/\{[a-f0-9]/)?.index;
+        return src.match(/\{([a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12})}/)?.index;
     },
     tokenizer(src: string) {
         console.log("TOKENIZER: ", src);
