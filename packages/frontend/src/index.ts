@@ -12,18 +12,19 @@ export const init = (sdk: CaidoSDK) => {
   });
 
   app.mount(root);
-
   sdk.commands.register("Notes++",{
     name: "Navigate to Notes++",
     run: () => {
       sdk.navigation.goTo("/NotesPlusPlus")
+      setTimeout(() => {
+        document.querySelector("#markdown-view textarea")?.focus();
+      }, 50)
     },
   })
 
+  sdk.shortcuts.register("Notes++",["⌃", "⌥", "n"])
+
   sdk.commandPalette.register("Notes++")
-
-  sdk.shortcuts.register("Notes++",["⌃", "⇧", "N"])
-
 
   sdk.navigation.addPage("/NotesPlusPlus", {
     body: root,
