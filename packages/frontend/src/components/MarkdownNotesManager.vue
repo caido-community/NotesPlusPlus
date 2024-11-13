@@ -427,30 +427,27 @@ const showCreateNoteOrFolderDialog = () => {
         console.log("New " + (creatingNewNoteOrFolder.value ? "note" : "folder"),data)
         const noteKey = uuid.v4()
         if(creatingNewNoteOrFolder.value) {
+          const node = {
+            text:"",
+            shortText:"",
+            key:noteKey,
+            data:data,
+            label:data,
+            icon: "pi pi-fw pi-file",
+            selectable: true,
+          }
           if( selectedNode.value == null ) {
-            nodes.value.push(
-                {
-                  text:"",
-                  shortText:"",
-                  key:noteKey,
-                  data:data,
-                  label:data,
-                  icon: "pi pi-fw pi-file",
-                  selectable: true,
-                }
-            )
-            sdk.backend.saveNote(noteKey,"",data,getProjectId(),0,false).then((result) => {console.log("SAVE ROOT NOTE RESULT:",result)})
-          } else {
-            selectedNode.value.children.push({
-              text:"",
-              shortText:"",
-              key:noteKey,
-              data:data,
-              label:data,
-              icon: "pi pi-fw pi-file",
-              selectable: true,
+            nodes.value.push(node)
+            sdk.backend.saveNote(noteKey,"",data,getProjectId(),0,false).then((result) => {
+              console.log("SAVE ROOT NOTE RESULT:",result)
+              selectedNode.value = node
             })
-            sdk.backend.saveNote(noteKey,"",data,getProjectId(),selectedNode.value.key,false).then((result) => {console.log("SAVE FOLDER NOTE RESULT:",result)})
+          } else {
+            selectedNode.value.children.push(node)
+            sdk.backend.saveNote(noteKey,"",data,getProjectId(),selectedNode.value.key,false).then((result) => {
+              console.log("SAVE FOLDER NOTE RESULT:",result)
+              selectedNode.value = node
+            })
           }
         } else {
           if( selectedNode.value == null ) {
