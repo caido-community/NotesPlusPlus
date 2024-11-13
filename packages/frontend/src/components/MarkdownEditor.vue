@@ -1,14 +1,9 @@
 <script setup lang="ts">
-import {marked} from "marked";
+import {marked} from "@/utils/marked";
 import { debounce } from 'throttle-debounce';
-import {markedHighlight} from "marked-highlight";
-import hljs from "highlight.js";
 import {SmartSuggest} from "vue-smart-suggest";
-import {customLinkExtension} from "@/plugins/CustomLinkMarkedExtension";
-import {imagePasteMarkedExtension} from "@/plugins/ImagePasteMarkedExtension";
 import MarkdownExampleDialog from "@/components/MarkdownExampleDialog.vue";
 import {useDialog} from "primevue/usedialog";
-import markedAlert from "marked-alert";
 import {useSDK} from "@/plugins/sdk";
 import { computedAsync } from '@vueuse/core'
 
@@ -23,36 +18,6 @@ const userMentionTrigger = {
   char: '@',
   items: replays.value,
 };
-
-marked.use({
-  async: true,
-  async walkTokens(token) {
-    if( token.type === 'imagePasteMarkedExtension') {
-      for (let file of sdk.files.getAll()) {
-        console.log(`Checking for match between ${file.id} and ${token.id}`);
-        if (file.id === token.id) {
-          console.log("MATCH", file.path)
-          try {
-            token.fileName = file.name
-            token.dataUrl = await sdk.backend.fetchImage(file)
-            break
-          } catch (e) {
-            console.log("FILE LOAD ERROR: ", e);
-          }
-        }
-      }
-    }
-  },
-  extensions: [customLinkExtension, imagePasteMarkedExtension]
-});
-marked.use(markedAlert())
-marked.use(markedHighlight({
-  langPrefix: 'hljs language-',
-  highlight(code, lang) {
-    const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-    return hljs.highlight(code, { language }).value;
-  }
-}));
 
 const renderedMarkdown = computedAsync(async () => {
   console.log("RENDER MARKDOWN COMPUTE:",model.value.text)
