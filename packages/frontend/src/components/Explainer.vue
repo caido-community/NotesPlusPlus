@@ -167,9 +167,10 @@ const renderedMarkdown = computedAsync(async () => {
 
 <template>
   <div style="height: 100%;width: 100%;text-align: center">
-    <h1> Welcome to Notes++ </h1>
-    <br>
+
     <div style="width: 80%;margin:auto;padding-bottom: 5em;">
+      <h1> Welcome to Notes++ </h1>
+      <br>
       This plugin provides rich note capabilities with the power of Markdown!
       Below you'll see an example of what is capable within a note.
       <br>

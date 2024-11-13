@@ -126,7 +126,7 @@ const vFocus = {
         </div>
       </SplitterPanel>
       <SplitterPanel>
-        <div class="flex-auto overflow-auto p-4 markdown-body" style="max-width: 50%; min-width: 50%; border: 0.5rem groove">
+        <div class="flex-auto overflow-auto p-4 markdown-body" style="height: 100%; border: 0.5rem groove">
           <div v-html="renderedMarkdown" id="markdownView"></div>
         </div>
       </SplitterPanel>
