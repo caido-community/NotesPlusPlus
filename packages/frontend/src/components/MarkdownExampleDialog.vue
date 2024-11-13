@@ -182,7 +182,7 @@ const renderedMarkdown = computedAsync(async () => {
       />
       </div>
       <div class="flex-auto overflow-auto p-4 markdown-body" style="max-width: 50%; min-width: 50%; border: 0.5rem groove">
-        <div id="markdownView" class="bg-surface-700" v-html="renderedMarkdown"></div>
+        <div id="markdownView" v-html="renderedMarkdown"></div>
       </div>
     </div>
   </div>
