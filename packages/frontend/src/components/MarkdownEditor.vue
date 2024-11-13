@@ -95,6 +95,10 @@ const showInfoModal = function () {
   })
 }
 
+const vFocus = {
+  mounted: (el: HTMLElement) => el.focus(),
+};
+
 </script>
 
 <template>
@@ -105,6 +109,8 @@ const showInfoModal = function () {
           style="width: 100%; height: 100%; padding: 1em; resize: none"
           class="bg-surface-700"
           v-model="model.text"
+          v-focus
+          id="markdownEditorTextarea"
           @input="debouncedSave"
           @blur="handleSave"
           @keydown.ctrl.s.prevent="handleSave"
