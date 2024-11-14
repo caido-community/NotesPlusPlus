@@ -37,6 +37,17 @@ const DELETED_REPLAY_SESSION_SUBSCRIPTION = gql`
   }
 `;
 
+sdk.commands.register("CopyToNotes",{
+  name: "Copy Selected Text To Current Note",
+  run: () => {
+    const text = sdk.window.getActiveEditor().getSelectedText()
+    selectedNode.value.text = selectedNode.value.text + `\n\`\`\`\n${text}\n\`\`\``
+  }
+})
+sdk.shortcuts.register("CopyToNotes",["control", 'alt', "c"])
+
+sdk.commandPalette.register("CopyToNotes")
+
 const evenBetterAPI = new EvenBetterAPI(sdk,undefined);
 
 
@@ -140,7 +151,7 @@ const findNodeById = (nodes, id, parent = null) => {
 
 const nodeSelected = function(node) {
   if ( node.selectable ) {
-    console.log("SELECTED: ",node)
+    console.log("SELECTED: ",node, selectedKey.value)
     selectedNode.value = node
   }
 }
