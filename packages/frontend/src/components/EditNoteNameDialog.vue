@@ -19,9 +19,9 @@ const CreateNewNoteOrFolder = (data) => {
 </script>
 
 <template>
-  <div>
+  <div style="margin-top:0.25em">
     <div class="flex items-center gap-4 mb-4 p-primary-color">
-      <InputText id="NoteOrFolderName" v-model="newNoteNameValue" class="flex-auto p-text-color" autocomplete="off" />
+      <InputText id="NoteOrFolderName" v-model="newNoteNameValue" class="flex-auto p-text-color" autocomplete="off" v-on:keyup.enter="CreateNewNoteOrFolder(newNoteNameValue)"/>
     </div>
     <div class="flex justify-end gap-2">
       <Button type="button" label="Cancel" severity="secondary" @click="CreateNewNoteOrFolder(null)">Cancel</Button>
