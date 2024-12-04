@@ -1,6 +1,6 @@
 {
   "name": "backend",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Notes++ Backend",
   "author": "_StaticFlow_",
   "license": "CC0-1.0",
@@ -11,10 +11,14 @@
     "build": "vite build"
   },
   "dependencies": {
-    "shared": "workspace:*"
+    "@types/node": "^22.10.1",
+    "nanoid": "^5.0.9",
+    "react-native-get-random-values": "^1.11.0",
+    "shared": "workspace:*",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
-    "@caido/sdk-backend": "^0.43.0",
+    "@caido/sdk-backend": "^0.44.1",
     "@caido/sdk-frontend": "0.43.0"
   }
 }

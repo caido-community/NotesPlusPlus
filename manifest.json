@@ -1,7 +1,7 @@
 {
   "id": "notesplusplus",
   "name": "Notes++",
-  "version": "0.1.4",
+  "version": "0.0.1",
   "description": "Caido plugin for markdown based notes",
   "author": {
     "name": "_StaticFlow_",
@@ -14,7 +14,7 @@
       "id": "notes-plus-plus-frontend",
       "name": "Notes++ Frontend",
       "entrypoint": "frontend/script.js",
-      "style": "frontend/style.css",
+      "style": "frontend/frontend.css",
       "backend": {
         "id": "notes-plus-plus-backend"
       }

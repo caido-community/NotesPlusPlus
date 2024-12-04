@@ -8,6 +8,7 @@ import {useSDK} from "@/plugins/sdk";
 import { computedAsync } from '@vueuse/core'
 import Splitter from 'primevue/splitter';
 import SplitterPanel from 'primevue/splitterpanel';
+import {onMounted, ref} from "vue";
 
 const model = defineModel('model')
 const replays = defineModel('replays')
@@ -22,14 +23,19 @@ const userMentionTrigger = {
 };
 
 const renderedMarkdown = computedAsync(async () => {
-  console.log("RENDER MARKDOWN COMPUTE:",model.value.text)
-  if (model.value.text != undefined) {
-    return marked(model.value.text);
+  console.log("RENDER MARKDOWN COMPUTE:",model.value.data)
+  if (model.value.data != undefined) {
+    return marked(model.value.data);
   }
   return marked("")
 });
 
 const emit = defineEmits(['update:note'])
+
+const onInput = function () {
+  debouncedSave()
+  handleScrollSync({target: textarea.value});
+}
 
 const debouncedSave = debounce(10000,() => {
   sdk.window.showToast("Auto-Saved Note",{variant: "info"})
@@ -67,9 +73,9 @@ const handlePaste = async (event) => {
         console.log("PASTE FILE SAVE:", res)
         const markdownLink = `{${res.id}}`
         const cursorPos = textarea.selectionStart;
-        const textBefore = model.value.text.substring(0, cursorPos);
-        const textAfter = model.value.text.substring(cursorPos);
-        model.value.text = textBefore + markdownLink + textAfter;
+        const textBefore = model.value.data.substring(0, cursorPos);
+        const textAfter = model.value.data.substring(cursorPos);
+        model.value.data = textBefore + markdownLink + textAfter;
         textarea.selectionStart = textarea.selectionEnd = cursorPos + markdownLink.length;
       })
     } catch (error) {
@@ -101,6 +107,31 @@ const vFocus = {
   mounted: (el: HTMLElement) => el.focus(),
 };
 
+let isScrolling = false;
+const textarea = ref(null);
+const preview = ref(null);
+const handleScrollSync = (event) => {
+  if (isScrolling) return;
+
+  isScrolling = true;
+
+  const source = event.target;
+  const target = source === textarea.value ? preview.value : textarea.value;
+
+  if (!source || !target) return;
+
+  const percentage = source.scrollTop / (source.scrollHeight - source.clientHeight);
+  target.scrollTop = percentage * (target.scrollHeight - target.clientHeight);
+
+  setTimeout(() => {
+    isScrolling = false;
+  }, 50);
+};
+
+onMounted(() => {
+  handleScrollSync({target: textarea.value});
+})
+
 </script>
 
 <template>
@@ -110,12 +141,14 @@ const vFocus = {
         <div class="flex-auto" style="height: 100%;flex: 1 1 auto; position: relative;">
           <SmartSuggest :triggers="[userMentionTrigger]" style="width: 100%; height: 100%;" append-to="self">
           <textarea
+              ref="textarea"
+              @scroll="handleScrollSync"
               style="width: 100%; height: 100%; padding: 1em; resize: none"
               class="bg-surface-700"
-              v-model="model.text"
+              v-model="model.data"
               v-focus
               id="markdownEditorTextarea"
-              @input="debouncedSave"
+              @input="onInput"
               @blur="handleSave"
               @keydown.ctrl.s.prevent="handleSave"
               @paste="handlePaste"
@@ -126,7 +159,7 @@ const vFocus = {
         </div>
       </SplitterPanel>
       <SplitterPanel>
-        <div class="flex-auto overflow-auto p-4 markdown-body" style="height: 100%; border: 0.5rem groove">
+        <div ref="preview" class="flex-auto overflow-auto p-4 markdown-body" style="height: 100%; border: 0.5rem groove" @scroll="handleScrollSync">
           <div v-html="renderedMarkdown" id="markdownView"></div>
         </div>
       </SplitterPanel>
