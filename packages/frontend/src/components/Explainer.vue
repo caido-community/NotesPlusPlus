@@ -1,7 +1,7 @@
 <script setup lang="ts">
 
 
-import {ref} from "vue";
+import {onMounted, ref} from "vue";
 import {computedAsync} from "@vueuse/core";
 import {marked} from "@/utils/marked";
 
@@ -159,9 +159,28 @@ Simply copy an image to your clipboard and paste it into the markdown note. Note
   `
 )
 
+
 const renderedMarkdown = computedAsync(async () => {
   return marked(exampleMarkdown.value)
 });
+
+const textarea = ref(null);
+const preview = ref(null);
+
+
+const handleScrollSync = (event) => {
+  const source = event.target;
+  const target = source === textarea.value ? preview.value : textarea.value;
+
+  if (!source || !target) return;
+
+  const percentage = source.scrollTop / (source.scrollHeight - source.clientHeight);
+  target.scrollTop = percentage * (target.scrollHeight - target.clientHeight);
+};
+
+onMounted(() => {
+  handleScrollSync({target: textarea.value});
+})
 
 </script>
 
@@ -181,13 +200,15 @@ const renderedMarkdown = computedAsync(async () => {
       <div style="display: flex;height: 100%;width: 100%;">
         <div class="flex-auto" style="flex: 1 1 auto; position: relative;">
       <textarea
+          ref="textarea"
+          @scroll="handleScrollSync"
           style="width: 100%; height: 100%; padding: 1em; resize: none"
           v-model="exampleMarkdown"
           class="bg-surface-700"
           disabled
       />
         </div>
-        <div class="flex-auto overflow-auto p-4 markdown-body" style="max-width: 50%; min-width: 50%; border: 0.5rem groove">
+        <div  ref="preview"  class="flex-auto overflow-auto p-4 markdown-body" style="max-width: 50%; min-width: 50%; border: 0.5rem groove"  @scroll="handleScrollSync">
           <div id="markdownView" v-html="renderedMarkdown"></div>
         </div>
       </div>

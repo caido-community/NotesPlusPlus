@@ -13,7 +13,6 @@ import DialogService from 'primevue/dialogservice';
 import Tooltip from 'primevue/tooltip';
 import {configureMarked} from "@/utils/marked";
 
-
 export const defineApp = (sdk: CaidoSDK) => {
   const app = createApp({
     setup() {
@@ -21,6 +20,8 @@ export const defineApp = (sdk: CaidoSDK) => {
     },
     render: () => h(MarkdownNotesManager),
   });
+
+  sdk.backend.createRootNoteFolder();
   configureMarked(sdk);
   app.use(ConfirmationService);
   app.directive('tooltip', Tooltip);

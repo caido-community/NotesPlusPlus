@@ -1,15 +1,14 @@
 {
   "name": "shared",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Shared types between frontend and backend",
-  "author": "Caido Labs Inc. <dev@caido.io>",
+  "author": "_StaticFlow_",
   "license": "CC0-1.0",
   "type": "module",
   "types": "src/index.ts",
+  "exports": "./src/index.js",
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "zod": "3.23.8"
-  }
+  "dependencies": {}
 }

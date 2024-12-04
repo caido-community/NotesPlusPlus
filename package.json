@@ -1,6 +1,6 @@
 {
   "name": "notes-plus-plus",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Caido plugin for markdown based notes",
   "author": "_StaticFlow_",
   "license": "CC0-1.0",
@@ -14,7 +14,7 @@
     "@biomejs/biome": "1.9.4",
     "@caido/plugin-manifest": "0.2.0",
     "jszip": "3.10.1",
-    "typescript": "5.6.3",
-    "vite": "5.4.10"
+    "typescript": "5.7.2",
+    "vite": "6.0.2"
   }
 }
