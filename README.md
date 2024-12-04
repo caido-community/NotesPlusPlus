@@ -37,9 +37,14 @@ Switching projects will show only the notes for that project.
 
 The search bar above the note tree on the left can be used to search for a note by its content or name
 
+### Disk Persistence
+
+Notes are stored in `<user home dir>/.CaidoNotesPlusPlus/`
+
+Each project is its own folder and the same folder structure of your notes in Cadio is reflected in the filesystem!
+
 ## Features Coming Soon
 
 - [ ] Moving Notes Between Folders
-- [ ] Disk Persistence
 - [ ] Link to HTTP History Request
 - [ ] Other Community Ideas!
