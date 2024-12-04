@@ -7,6 +7,17 @@ Write notes just like you would in any other markdown capable application withou
 ![Notes++](https://github.com/user-attachments/assets/721caf37-96dc-486a-83d0-2c7741690c91)
 
 
+# Install
+
+1. Clone this repo
+`git clone https://github.com/Static-Flow/CaidoNotesPlusPlus`
+
+2. Run `pnpm install`
+
+3. Run `pnpm build`
+
+4. Install the resulting `plugin_package.zip`
+
 # Details
 
 ## Notes++ Specific Features
