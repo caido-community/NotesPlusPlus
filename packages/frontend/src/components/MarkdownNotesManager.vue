@@ -336,6 +336,8 @@ const showDialog = (editMode: boolean) => {
         if (editMode) {
           sdk.backend.renameNoteOnDisk(rightClickNode.value, newNoteOrFolderName).then(() => {
             rightClickNode.value.label = newNoteOrFolderName
+            rightClickNode.value.filepath[rightClickNode.value.filepath.length-1] = newNoteOrFolderName
+            console.log("Updated: ",rightClickNode.value)
           })
         } else {
           const noteKey = uuid.v4()
@@ -466,7 +468,7 @@ const selectedKey = ref(null);
         <i v-else class="pi pi-angle-double-right" :style="{'margin-right':'.5em'}"></i>
       </div>
       <div  class="tree-content" id="tree-content" v-show="showTree">
-        <Tree :pt="{pcFilterContainer:{root: 'border-gray-500 border-1'}, nodeLabel:{style:'width: 100%' }, nodeContent: ({context}) => ({
+        <Tree :pt="{pcFilterIconContainer:{root: 'p-inputicon'}, nodeLabel:{style:'width: 100%' }, nodeContent: ({context}) => ({
           onContextmenu: (event) => handleRightClick(event,context.node)
         })}" id="NoteTree" @contextmenu="handleRightClick($event, null)" @nodeSelect="nodeSelected" :value="nodes" class="w-full mw-100"
               :style="{'height':'100%', 'background':'var(--c-bg-subtle)'}" selectionMode="single"   :filter="true" filterMode="strict"

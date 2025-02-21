@@ -11,14 +11,14 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@types/node": "^22.10.1",
-    "nanoid": "^5.0.9",
+    "@types/node": "^22.13.5",
+    "nanoid": "^5.1.0",
     "react-native-get-random-values": "^1.11.0",
     "shared": "workspace:*",
-    "uuid": "^11.0.3"
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@caido/sdk-backend": "^0.44.1",
-    "@caido/sdk-frontend": "0.43.0"
+    "@caido/sdk-backend": "^0.45.1",
+    "@caido/sdk-frontend": "0.45.1"
   }
 }
