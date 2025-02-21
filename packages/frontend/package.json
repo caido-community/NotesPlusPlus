@@ -29,6 +29,7 @@
     "@vue/apollo-option": "^4.2.0",
     "@vueuse/core": "11.1.0",
     "arrive": "^2.5.1",
+    "dompurify": "3.2.4",
     "github-markdown-css": "^5.8.1",
     "graphql": "^16.9.0",
     "graphql-ws": "^5.16.0",
