@@ -9,6 +9,7 @@ import { computedAsync } from '@vueuse/core'
 import Splitter from 'primevue/splitter';
 import SplitterPanel from 'primevue/splitterpanel';
 import {onMounted, ref} from "vue";
+import DOMPurify from 'dompurify'
 
 const model = defineModel('model')
 const replays = defineModel('replays')
@@ -24,10 +25,8 @@ const userMentionTrigger = {
 
 const renderedMarkdown = computedAsync(async () => {
   console.log("RENDER MARKDOWN COMPUTE:",model.value.data)
-  if (model.value.data != undefined) {
-    return marked(model.value.data);
-  }
-  return marked("")
+  const markedContent = await marked(model.value.data || "")
+  return DOMPurify.sanitize(markedContent);
 });
 
 const emit = defineEmits(['update:note'])
@@ -136,7 +135,7 @@ onMounted(() => {
 
 <template>
   <div style="display: flex;height: 100%;width: 100%;">
-    <Splitter style="width: 100%; height: 100%;">
+    <Splitter style="width: 100%; height: 100%;" gutter-size="5" :pt="{gutter:{style: {'background-color':'black'}}}">
       <SplitterPanel>
         <div class="flex-auto" style="height: 100%;flex: 1 1 auto; position: relative;">
           <SmartSuggest :triggers="[userMentionTrigger]" style="width: 100%; height: 100%;" append-to="self">
@@ -159,7 +158,7 @@ onMounted(() => {
         </div>
       </SplitterPanel>
       <SplitterPanel>
-        <div ref="preview" class="flex-auto overflow-auto p-4 markdown-body" style="height: 100%; border: 0.5rem groove" @scroll="handleScrollSync">
+        <div ref="preview" id="markdownWrapper" class="flex-auto overflow-auto p-4 markdown-body" style="height: 100%; border: 0.5rem groove" @scroll="handleScrollSync">
           <div v-html="renderedMarkdown" id="markdownView"></div>
         </div>
       </SplitterPanel>
