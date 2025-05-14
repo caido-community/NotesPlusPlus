@@ -8,5 +8,9 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["./src/**/*.ts", "./src/**/*.vue"]
+  "include": [
+    "./src/**/*.ts",
+    "./src/**/*.vue",
+    "src/components/content/editor/extensions/mentions/suggestion.ts"
+  ]
 }

@@ -1,0 +1,95 @@
+.editor-wrapper {
+  width: 100%;
+  height: 100%;
+  overflow-wrap: break-word;
+}
+
+.tiptap {
+  height: 100%;
+}
+
+.tiptap p {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.tiptap .heading {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  color: #888e93;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.heading-hashtags {
+  color: #888e93;
+  opacity: 0.7;
+  font-weight: normal;
+  user-select: none;
+  pointer-events: none;
+}
+
+.heading {
+  margin-bottom: 0.5em;
+  line-height: 1.2;
+  font-weight: bold;
+}
+
+.heading-1 {
+  font-size: 2em;
+}
+
+.heading-2 {
+  font-size: 1.5em;
+}
+
+.heading-3 {
+  font-size: 1.25em;
+}
+
+.heading-4 {
+  font-size: 1.125em;
+}
+
+.heading-5 {
+  font-size: 1em;
+}
+
+.heading-6 {
+  font-size: 0.875em;
+}
+
+.tiptap ul li::before {
+  content: "- ";
+  color: #888e93;
+  position: absolute;
+  margin-left: -1.5em;
+}
+
+.tiptap ol {
+  counter-reset: list-counter;
+}
+
+.tiptap ol li {
+  counter-increment: list-counter;
+}
+
+.tiptap ol li::before {
+  content: counter(list-counter) ". ";
+  color: #888e93;
+  position: absolute;
+  margin-left: -1.5em;
+}
+
+.caido-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
