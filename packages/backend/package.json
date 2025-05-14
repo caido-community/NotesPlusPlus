@@ -4,7 +4,7 @@
   "type": "module",
   "types": "src/index.ts",
   "scripts": {
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@caido/sdk-backend": "^0.48.0",
