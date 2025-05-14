@@ -71,9 +71,9 @@ onBeforeUnmount(() => {
 
       <div class="flex items-center mb-4">
         <input
-          type="checkbox"
           id="dontShowAgain"
           v-model="dontShowAgain"
+          type="checkbox"
           class="mr-2"
         />
         <label for="dontShowAgain" class="text-surface-300 text-sm"

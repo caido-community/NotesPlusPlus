@@ -25,7 +25,7 @@ onMounted(() => {
 
         cm.value.show(event);
       }
-    }
+    },
   );
 
   watch(
@@ -34,7 +34,7 @@ onMounted(() => {
       if (shouldHide && cm.value) {
         cm.value.hide();
       }
-    }
+    },
   );
 });
 

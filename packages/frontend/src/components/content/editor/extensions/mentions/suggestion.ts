@@ -14,7 +14,7 @@ interface SessionItem {
 
 interface SuggestionProps {
   editor: Editor;
-  clientRect?: (() => DOMRect | null) | null;
+  clientRect?: (() => DOMRect | undefined) | undefined;
   event?: KeyboardEvent;
   range?: { from: number; to: number };
   command: (attrs: SessionItem) => void;
@@ -37,7 +37,7 @@ export default function createSuggestion(sdk: FrontendSDK) {
       return sessions
         .sort((a, b) => parseInt(b.id) - parseInt(a.id))
         .filter((item) =>
-          item.label.toLowerCase().includes(query.toLowerCase())
+          item.label.toLowerCase().includes(query.toLowerCase()),
         )
         .slice(0, 7);
     },

@@ -1,7 +1,9 @@
 import { Classic } from "@caido/primevue";
 import { createPinia } from "pinia";
 import PrimeVue from "primevue/config";
+import { type NoteContent } from "shared";
 import { createApp } from "vue";
+
 import { SDKPlugin } from "./plugins/sdk";
 import "./styles/index.css";
 import type { FrontendSDK } from "./types";
@@ -14,7 +16,6 @@ import {
 } from "@/actions/actions";
 import { emitter } from "@/utils/eventBus";
 import { convertMarkdownToTipTap } from "@/utils/markdownToJSON";
-import { NoteContent } from "shared";
 
 export const init = (sdk: FrontendSDK) => {
   const pinia = createPinia();

@@ -1,10 +1,11 @@
 import { type NoteContentItem } from "shared";
 import { createApp, h } from "vue";
+
+import NoteFloatModal from "@/components/shared/NoteFloatModal.vue";
 import { SDKPlugin } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
 import type { FrontendSDK } from "@/types";
 import { currentReplayTabData } from "@/utils/caido";
-import NoteFloatModal from "@/components/shared/NoteFloatModal.vue";
 import {
   addParagraphToContent,
   createMention,
@@ -58,7 +59,7 @@ export const sendSelectedTextToNote = async (sdk: FrontendSDK) => {
   if (!notesStore.currentNotePath) {
     sdk.window.showToast(
       "No note is currently open. Please open a note first.",
-      { variant: "warning" }
+      { variant: "warning" },
     );
     return;
   }
@@ -70,19 +71,19 @@ export const sendSelectedTextToNote = async (sdk: FrontendSDK) => {
       const paragraph = createTextParagraph(selectedText);
       const updatedContent = addParagraphToContent(
         notesStore.currentNote.content,
-        paragraph
+        paragraph,
       );
 
       await notesStore.updateNoteContent(
         notesStore.currentNotePath,
-        updatedContent
+        updatedContent,
       );
 
       sdk.window.showToast(
         `Selected text added to note ${notesStore.currentNotePath}`,
         {
           variant: "success",
-        }
+        },
       );
 
       await notesStore.refreshTree();
@@ -103,7 +104,7 @@ export const sendReplaySessionToNote = async (sdk: FrontendSDK) => {
   if (!notesStore.currentNotePath) {
     sdk.window.showToast(
       "No note is currently open. Please open a note first.",
-      { variant: "warning" }
+      { variant: "warning" },
     );
     return;
   }
@@ -140,17 +141,17 @@ export const sendReplaySessionToNote = async (sdk: FrontendSDK) => {
 
       const updatedContent = addParagraphToContent(
         notesStore.currentNote.content,
-        paragraph
+        paragraph,
       );
 
       await notesStore.updateNoteContent(
         notesStore.currentNotePath,
-        updatedContent
+        updatedContent,
       );
 
       sdk.window.showToast(
         `Replay session added to note ${notesStore.currentNotePath}`,
-        { variant: "success" }
+        { variant: "success" },
       );
 
       await notesStore.refreshTree();

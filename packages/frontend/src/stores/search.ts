@@ -2,8 +2,8 @@ import { defineStore } from "pinia";
 import { type Note } from "shared";
 import { computed, ref } from "vue";
 
-import { useNotesRepository } from "@/repositories/notes";
 import { useSDK } from "@/plugins/sdk";
+import { useNotesRepository } from "@/repositories/notes";
 
 export interface SearchResult {
   note: Note;
