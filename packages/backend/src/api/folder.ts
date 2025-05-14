@@ -10,6 +10,7 @@ import {
   createDirectory,
   directoryExists,
   ensureProjectDirectory,
+  normalizePath,
 } from "../utils/fileSystem";
 import { getNoteRootPath } from "../utils/paths";
 
@@ -40,7 +41,7 @@ export async function createFolder(
 
     const name = path.basename(folderPath);
     return ok({
-      path: folderPath,
+      path: normalizePath(folderPath),
       name,
       type: "folder",
       children: [],

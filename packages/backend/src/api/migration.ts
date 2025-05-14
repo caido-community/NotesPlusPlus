@@ -13,6 +13,7 @@ import {
   ensureProjectDirectory,
   fileExists,
   getNameFromPath,
+  normalizePath,
   writeFile,
 } from "../utils/fileSystem";
 import { getNoteRootPath } from "../utils/paths";
@@ -45,7 +46,13 @@ export async function getLegacyNotes(
         if (entry === ".DS_Store") continue;
 
         const fullPath = path.join(dirPath, entry);
-        const entryRelativePath = path.join(relativePath, entry);
+        const normalizedEntry = normalizePath(entry);
+        const normalizedRelativePath = relativePath
+          ? normalizePath(relativePath)
+          : "";
+        const entryRelativePath = normalizePath(
+          path.join(normalizedRelativePath, normalizedEntry),
+        );
 
         if (directoryExists(fullPath)) {
           findLegacyNotesInDirectory(fullPath, entryRelativePath);
@@ -62,7 +69,7 @@ export async function getLegacyNotes(
               continue;
             } catch {
               legacyNotes.push({
-                path: entryRelativePath,
+                path: normalizePath(entryRelativePath),
                 content,
               });
             }
@@ -114,7 +121,7 @@ export async function migrateNote(
     const name = getNameFromPath(notePath);
 
     return ok({
-      path: ensureJsonExtension(notePath),
+      path: ensureJsonExtension(normalizePath(notePath)),
       name,
       type: "note",
       content,

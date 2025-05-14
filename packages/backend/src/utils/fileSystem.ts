@@ -8,11 +8,25 @@ import { error, ok } from "shared";
 import { getNoteRootPath } from "./paths";
 
 /**
+ * Normalize path to use forward slashes for application use
+ */
+export function normalizePath(filepath: string): string {
+  return filepath.split(path.sep).join("/");
+}
+
+/**
+ * Convert application path (with forward slashes) to system path
+ */
+export function toSystemPath(filepath: string): string {
+  return filepath.split("/").join(path.sep);
+}
+
+/**
  * Copy a file using readFile and writeFile
  */
 export function copyFile(source: string, destination: string): void {
-  const content = fs.readFileSync(source);
-  fs.writeFileSync(destination, content);
+  const content = fs.readFileSync(toSystemPath(source));
+  fs.writeFileSync(toSystemPath(destination), content);
 }
 
 /**
@@ -20,28 +34,28 @@ export function copyFile(source: string, destination: string): void {
  */
 export function moveFile(source: string, destination: string): void {
   copyFile(source, destination);
-  fs.rmSync(source);
+  fs.rmSync(toSystemPath(source));
 }
 
 /**
  * Delete a file
  */
 export function deleteFile(filepath: string): void {
-  fs.rmSync(filepath);
+  fs.rmSync(toSystemPath(filepath));
 }
 
 /**
  * Copy a directory recursively
  */
 export function copyDirectory(source: string, destination: string): void {
-  fs.mkdirSync(destination, { recursive: true });
-  const entries = fs.readdirSync(source);
+  fs.mkdirSync(toSystemPath(destination), { recursive: true });
+  const entries = fs.readdirSync(toSystemPath(source));
 
   for (const entry of entries) {
     const sourcePath = path.join(source, entry);
     const destPath = path.join(destination, entry);
 
-    if (fs.statSync(sourcePath).isDirectory()) {
+    if (fs.statSync(toSystemPath(sourcePath)).isDirectory()) {
       copyDirectory(sourcePath, destPath);
     } else {
       copyFile(sourcePath, destPath);
@@ -54,14 +68,14 @@ export function copyDirectory(source: string, destination: string): void {
  */
 export function moveDirectory(source: string, destination: string): void {
   copyDirectory(source, destination);
-  fs.rmSync(source, { recursive: true });
+  fs.rmSync(toSystemPath(source), { recursive: true });
 }
 
 /**
  * Move a file or directory
  */
 export function move(source: string, destination: string): void {
-  if (fs.statSync(source).isDirectory()) {
+  if (fs.statSync(toSystemPath(source)).isDirectory()) {
     moveDirectory(source, destination);
   } else {
     moveFile(source, destination);
@@ -73,7 +87,7 @@ export function move(source: string, destination: string): void {
  */
 export function directoryExists(filepath: string): boolean {
   try {
-    return fs.statSync(filepath).isDirectory();
+    return fs.statSync(toSystemPath(filepath)).isDirectory();
   } catch (error) {
     return false;
   }
@@ -84,7 +98,7 @@ export function directoryExists(filepath: string): boolean {
  */
 export function fileExists(filepath: string): boolean {
   try {
-    return fs.statSync(filepath).isFile();
+    return fs.statSync(toSystemPath(filepath)).isFile();
   } catch (error) {
     return false;
   }
@@ -94,7 +108,7 @@ export function fileExists(filepath: string): boolean {
  * Create a directory
  */
 export function createDirectory(filepath: string): void {
-  fs.mkdirSync(filepath, { recursive: true });
+  fs.mkdirSync(toSystemPath(filepath), { recursive: true });
 }
 
 /**
@@ -105,7 +119,7 @@ export function writeFile(filepath: string, content: NoteContent): void {
   if (!directoryExists(dirPath)) {
     createDirectory(dirPath);
   }
-  fs.writeFileSync(filepath, JSON.stringify(content, null, 2));
+  fs.writeFileSync(toSystemPath(filepath), JSON.stringify(content, null, 2));
 }
 
 /**
@@ -113,7 +127,7 @@ export function writeFile(filepath: string, content: NoteContent): void {
  */
 export function readFile(filepath: string): NoteContent {
   return (
-    JSON.parse(fs.readFileSync(filepath, "utf8")) || {
+    JSON.parse(fs.readFileSync(toSystemPath(filepath), "utf8")) || {
       type: "doc",
       content: [],
     }

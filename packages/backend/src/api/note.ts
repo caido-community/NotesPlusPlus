@@ -22,6 +22,7 @@ import {
   fileExists,
   getNameFromPath,
   move,
+  normalizePath,
   readFile,
   writeFile,
 } from "../utils/fileSystem";
@@ -323,12 +324,18 @@ export async function searchNotes(
 
       for (const entry of entries) {
         const fullPath = path.join(dirPath, entry);
+        const normalizedEntry = normalizePath(entry);
+        const normalizedRelativePath = relativePath
+          ? normalizePath(relativePath)
+          : "";
+        const entryPath = normalizePath(
+          path.join(normalizedRelativePath, normalizedEntry),
+        );
 
         if (directoryExists(fullPath)) {
-          searchInDirectory(fullPath, path.join(relativePath, entry));
+          searchInDirectory(fullPath, entryPath);
         } else if (entry.endsWith(".json") && fileExists(fullPath)) {
-          const name = getNameFromPath(entry);
-          const entryPath = path.join(relativePath, entry);
+          const name = getNameFromPath(normalizedEntry);
 
           const nameMatch = name.toLowerCase().includes(lowercaseQuery);
           const pathMatch = entryPath.toLowerCase().includes(lowercaseQuery);
@@ -339,7 +346,7 @@ export async function searchNotes(
               const stats = fs.statSync(fullPath);
 
               results.push({
-                path: entryPath,
+                path: normalizePath(entryPath),
                 name,
                 type: "note",
                 content,
@@ -379,18 +386,22 @@ function buildFolderTree(dirPath: string, relativePath: string): Folder {
 
   for (const entry of entries) {
     const fullPath = path.join(dirPath, entry);
-    const entryRelativePath = path.join(relativePath, entry);
+    const normalizedEntry = normalizePath(entry);
+    const normalizedRelativePath = normalizePath(relativePath);
+    const entryRelativePath = normalizePath(
+      path.join(normalizedRelativePath, normalizedEntry),
+    );
 
     if (directoryExists(fullPath)) {
       children.push(buildFolderTree(fullPath, entryRelativePath));
     } else if (entry.endsWith(".json") && fileExists(fullPath)) {
       try {
         const content = readFile(fullPath);
-        const name = getNameFromPath(entry);
+        const name = getNameFromPath(normalizedEntry);
         const stats = fs.statSync(fullPath);
 
         const noteObj: Note = {
-          path: entryRelativePath,
+          path: normalizePath(entryRelativePath),
           name,
           type: "note",
           content,
@@ -408,7 +419,7 @@ function buildFolderTree(dirPath: string, relativePath: string): Folder {
   }
 
   return {
-    path: relativePath,
+    path: normalizePath(relativePath),
     name: path.basename(relativePath) || "Root",
     type: "folder",
     children,
