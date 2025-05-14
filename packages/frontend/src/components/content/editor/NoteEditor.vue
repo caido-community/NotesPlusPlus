@@ -110,6 +110,7 @@ const editor = useEditor({
       heading: false,
     }),
     MarkdownHeading,
+    // @ts-expect-error - TipTap expects null for clientRect but we can't do it due to eslint rules
     SessionMention.configure({ suggestion }),
     MarkdownStyling,
     Placeholder.configure({
