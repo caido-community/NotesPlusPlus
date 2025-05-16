@@ -1,16 +1,72 @@
 <script setup lang="ts">
+import { type NoteContentItem } from "shared";
 import { computed, ref, watch } from "vue";
 
 import { useNotesStore } from "@/stores/notes";
-
 const notesStore = useNotesStore();
-const contentLength = computed(() => 123);
+
+const contentLength = computed(() => {
+  const content = notesStore.currentNote?.content;
+  if (!content) return 0;
+
+  let charCount = 0;
+  const countChars = (node: NoteContentItem) => {
+    if (node.text) {
+      charCount += node.text.length;
+    }
+    if (node.content) {
+      node.content.forEach(countChars);
+    }
+  };
+
+  countChars(content);
+  return charCount;
+});
+
 const wordCount = computed(() => {
-  return 123;
+  const content = notesStore.currentNote?.content;
+  if (!content) return 0;
+
+  let words = 0;
+  const countWords = (node: NoteContentItem) => {
+    if (node.text) {
+      const matches = node.text.match(/\S+/g);
+      words += matches ? matches.length : 0;
+    }
+    if (node.content) {
+      node.content.forEach(countWords);
+    }
+  };
+
+  countWords(content);
+  return words;
 });
 
 const lineCount = computed(() => {
-  return 123;
+  const content = notesStore.currentNote?.content;
+  if (!content) return 0;
+
+  let lines = 0;
+  const countLines = (node: NoteContentItem) => {
+    if (
+      node.type &&
+      [
+        "paragraph",
+        "heading",
+        "codeBlock",
+        "blockquote",
+        "horizontalRule",
+      ].includes(node.type)
+    ) {
+      lines++;
+    }
+    if (node.content) {
+      node.content.forEach(countLines);
+    }
+  };
+
+  countLines(content);
+  return lines;
 });
 
 const showSaved = ref(false);
@@ -24,7 +80,7 @@ watch(
         showSaved.value = false;
       }, 500);
     }
-  },
+  }
 );
 </script>
 
