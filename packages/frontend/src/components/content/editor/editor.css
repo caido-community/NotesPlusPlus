@@ -29,11 +29,9 @@
 }
 
 .heading-hashtags {
-  color: #888e93;
-  opacity: 0.7;
+  color: var(--color-surface-500, #71717a);
   font-weight: normal;
   user-select: none;
-  pointer-events: none;
 }
 
 .heading {
@@ -92,4 +90,16 @@
   max-width: 100%;
   height: auto;
   border-radius: 4px;
+  margin: 1rem 0;
+}
+
+/* Search result styling */
+.search-result {
+  background-color: rgba(99, 102, 241, 0.2);
+  border-radius: 2px;
+}
+
+.search-result.search-result-current {
+  background-color: rgba(99, 102, 241, 0.5);
+  outline: 1px solid rgba(99, 102, 241, 0.8);
 }

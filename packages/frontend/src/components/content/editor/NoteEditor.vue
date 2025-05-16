@@ -1,11 +1,14 @@
 <template>
-  <editor-content
-    :editor="editor"
-    spellcheck="false"
-    autocorrect="off"
-    autocapitalize="off"
-    class="editor-wrapper"
-  />
+  <div class="editor-container">
+    <editor-content
+      :editor="editor"
+      spellcheck="false"
+      autocorrect="off"
+      autocapitalize="off"
+      class="editor-wrapper"
+    />
+    <SearchUI v-if="editor" :editor="editor" />
+  </div>
 </template>
 <script setup lang="ts">
 import { Image as ImageExtension } from "@tiptap/extension-image";
@@ -24,6 +27,8 @@ import { MarkdownHeading } from "./extensions/markdown-heading";
 import MarkdownStyling from "./extensions/markdown-styling";
 import { createSessionMention } from "./extensions/mentions/mention-request";
 import createSuggestion from "./extensions/mentions/suggestion";
+import { Search } from "./extensions/search";
+import SearchUI from "./extensions/search/SearchUI.vue";
 
 import { useSDK } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
@@ -113,6 +118,10 @@ const editor = useEditor({
     // @ts-expect-error - TipTap expects null for clientRect but we can't do it due to eslint rules
     SessionMention.configure({ suggestion }),
     MarkdownStyling,
+    Search.configure({
+      searchResultClass: "search-result",
+      disableRegex: true,
+    }),
     Placeholder.configure({
       placeholder: "Write something...",
     }),
@@ -203,3 +212,14 @@ onMounted(() => {
   }
 });
 </script>
+
+<style>
+.editor-container {
+  position: relative;
+  height: 100%;
+}
+
+.editor-wrapper {
+  height: 100%;
+}
+</style>

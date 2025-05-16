@@ -11,7 +11,7 @@ export default defineConfig({
   id,
   name: "Notes++",
   description: "Create and edit notes in Caido",
-  version: "2.0.0",
+  version: "2.1.0",
   author: {
     name: "_StaticFlow_",
     email: "tanner.barnes@kashx.io",
