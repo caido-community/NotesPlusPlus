@@ -10,6 +10,7 @@ if (!document.getElementById(styleId)) {
   style.textContent = `
     .embedded-replay-editor {
       display: inline-block;
+      overflow: auto;
       margin: 12px 0;
       border: 2px solid var(--color-surface-600, #444);
       border-radius: 6px;
