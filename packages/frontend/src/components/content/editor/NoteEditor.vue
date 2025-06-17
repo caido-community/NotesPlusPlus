@@ -134,7 +134,7 @@ const editor = useEditor({
   editorProps: {
     attributes: {
       class:
-        "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none font-mono dark:prose-invert dark:text-surface-100",
+        "mx-auto focus:outline-none font-mono dark:prose-invert dark:text-surface-100",
     },
     handleDrop: (
       view: EditorView,
