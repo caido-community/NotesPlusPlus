@@ -12,7 +12,6 @@
     "shared": "workspace:*"
   },
   "dependencies": {
-    "@types/node": "^22.15.18",
     "zod": "^3.24.4"
   }
 }

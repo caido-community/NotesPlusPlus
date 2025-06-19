@@ -80,7 +80,7 @@ watch(
         showSaved.value = false;
       }, 500);
     }
-  }
+  },
 );
 </script>
 
