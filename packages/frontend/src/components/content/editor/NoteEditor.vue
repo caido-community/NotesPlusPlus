@@ -133,8 +133,7 @@ const editor = useEditor({
   ],
   editorProps: {
     attributes: {
-      class:
-        "mx-auto focus:outline-none font-mono dark:text-surface-100",
+      class: "mx-auto focus:outline-none font-mono dark:text-surface-100",
     },
     handleDrop: (
       view: EditorView,
