@@ -14,7 +14,6 @@ if (!document.getElementById(styleId)) {
       margin: 12px 0;
       border: 2px solid var(--color-surface-600, #444);
       border-radius: 6px;
-      overflow: hidden;
       cursor: pointer;
       width: 100%;
       min-height: 50px;
