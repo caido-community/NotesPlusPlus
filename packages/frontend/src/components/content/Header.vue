@@ -3,10 +3,12 @@ import { computed, nextTick, ref, watch } from "vue";
 
 import { useEditorStore } from "@/stores/editor";
 import { useNotesStore } from "@/stores/notes";
+import { useSidebarStore } from "@/stores/sidebar";
 
 const notesStore = useNotesStore();
 const note = computed(() => notesStore.currentNote);
 const editorStore = useEditorStore();
+const sidebarStore = useSidebarStore();
 const inputRef = ref<HTMLInputElement | undefined>(undefined);
 const isSubmitting = ref(false);
 
@@ -52,6 +54,13 @@ watch(
   >
     <div class="flex items-center">
       <div class="flex items-center">
+        <div
+          class="p-2 cursor-pointer hover:text-gray-300 transition-colors"
+          title="Toggle Sidebar (⌘ + B or Ctrl + B)"
+          @click="sidebarStore.toggleSidebar()"
+        >
+          <i class="fas fa-bars"></i>
+        </div>
         <div
           class="p-2 transition-colors"
           :class="[
