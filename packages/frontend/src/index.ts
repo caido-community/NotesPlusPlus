@@ -85,6 +85,9 @@ export const init = (sdk: FrontendSDK) => {
     onEnter: () => {
       emitter.emit("refreshEditors");
       checkLegacyNotes(sdk);
+      setTimeout(() => {
+        emitter.emit("restoreFocus");
+      }, 200);
     },
   });
 

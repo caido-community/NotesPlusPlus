@@ -19,7 +19,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { type Editor, EditorContent, useEditor } from "@tiptap/vue-3";
 import { useDebounceFn } from "@vueuse/core";
 import { type NoteContent } from "shared";
-import { onMounted, watch } from "vue";
+import { onMounted, onUnmounted, watch } from "vue";
 
 import "./editor.css";
 import { ArrowKeysFix } from "./extensions/arrows-fix";
@@ -32,6 +32,7 @@ import SearchUI from "./extensions/search/SearchUI.vue";
 
 import { useSDK } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
+import { emitter } from "@/utils/eventBus";
 import { compressImage } from "@/utils/images";
 
 const sdk = useSDK();
@@ -41,6 +42,44 @@ const SessionMention = createSessionMention(sdk);
 
 const MAX_IMAGE_SIZE_MB = 30;
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
+
+const cursorPositions = new Map<string, { from: number; to: number }>();
+
+const saveCursorPosition = () => {
+  if (!editor.value || !notesStore.currentNotePath) return;
+
+  const { from, to } = editor.value.state.selection;
+  cursorPositions.set(notesStore.currentNotePath, { from, to });
+};
+
+const restoreCursorPosition = (notePath: string) => {
+  if (!editor.value) return;
+
+  const savedPosition = cursorPositions.get(notePath);
+  if (savedPosition) {
+    const docLength = editor.value.state.doc.content.size;
+    const from = Math.min(savedPosition.from, docLength);
+    const to = Math.min(savedPosition.to, docLength);
+
+    editor.value.commands.setTextSelection({ from, to });
+  }
+
+  editor.value.view.focus();
+};
+
+const restoreFocus = () => {
+  if (!editor.value || !notesStore.currentNotePath) return;
+
+  editor.value.view.focus();
+
+  const savedPosition = cursorPositions.get(notesStore.currentNotePath);
+  if (savedPosition) {
+    const docLength = editor.value.state.doc.content.size;
+    const from = Math.min(savedPosition.from, docLength);
+    const to = Math.min(savedPosition.to, docLength);
+    editor.value.commands.setTextSelection({ from, to });
+  }
+};
 
 const saveNote = async (editor: Editor) => {
   if (!notesStore.currentNote) return;
@@ -189,16 +228,29 @@ const editor = useEditor({
       debouncedSave(editor as Editor);
     }
   },
+  onBlur: () => {
+    saveCursorPosition();
+  },
 });
+
+let previousNotePath: string | undefined;
 
 watch(
   () => notesStore.currentNote,
-  (newNote) => {
+  (newNote, oldNote) => {
+    // Save cursor position of the previous note before switching
+    if (previousNotePath && editor.value) {
+      const { from, to } = editor.value.state.selection;
+      cursorPositions.set(previousNotePath, { from, to });
+    }
+
     if (editor.value && newNote) {
       const content = newNote.content;
       editor.value.commands.setContent(content);
-      editor.value.commands.focus("end");
+      restoreCursorPosition(newNote.path);
     }
+
+    previousNotePath = newNote?.path;
   },
   { immediate: true },
 );
@@ -207,8 +259,15 @@ onMounted(() => {
   if (editor.value && notesStore.currentNote) {
     const content = notesStore.currentNote.content;
     editor.value.commands.setContent(content);
-    editor.value.commands.focus("end");
+    restoreCursorPosition(notesStore.currentNote.path);
   }
+
+  emitter.on("restoreFocus", restoreFocus);
+});
+
+onUnmounted(() => {
+  saveCursorPosition();
+  emitter.off("restoreFocus", restoreFocus);
 });
 </script>
 
