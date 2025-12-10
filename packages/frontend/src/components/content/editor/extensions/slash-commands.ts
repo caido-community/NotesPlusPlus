@@ -263,6 +263,12 @@ export const SlashCommands = Extension.create({
       new Plugin({
         key: new PluginKey("slashCommands"),
         props: {
+          handleDOMEvents: {
+            blur: () => {
+              hideMenu();
+              return false;
+            },
+          },
           handleKeyDown(view, event) {
             if (!menuElement) {
               if (event.key === "/" && isAtLineStart(view.state)) {
