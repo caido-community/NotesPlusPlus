@@ -1,4 +1,8 @@
 import { Editor } from "@tiptap/core";
+import Table from "@tiptap/extension-table";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
+import TableRow from "@tiptap/extension-table-row";
 import { StarterKit } from "@tiptap/starter-kit";
 import { type NoteContent, type NoteContentItem } from "shared";
 import { Markdown } from "tiptap-markdown";
@@ -117,7 +121,7 @@ export async function convertTipTapToMarkdown(
   };
 
   const editor = new Editor({
-    extensions: [StarterKit, Markdown],
+    extensions: [StarterKit, Table, TableRow, TableHeader, TableCell, Markdown],
     content: processedContent,
   });
 
