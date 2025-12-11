@@ -1,16 +1,39 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 
+import { useSDK } from "@/plugins/sdk";
 import { useEditorStore } from "@/stores/editor";
 import { useNotesStore } from "@/stores/notes";
 import { useSidebarStore } from "@/stores/sidebar";
+import { convertTipTapToMarkdown } from "@/utils/jsonToMarkdown";
 
 const notesStore = useNotesStore();
 const note = computed(() => notesStore.currentNote);
 const editorStore = useEditorStore();
 const sidebarStore = useSidebarStore();
+const sdk = useSDK();
 const inputRef = ref<HTMLInputElement | undefined>(undefined);
 const isSubmitting = ref(false);
+
+const copyAsMarkdown = async () => {
+  const content = notesStore.currentNote?.content;
+  if (!content) {
+    sdk.window.showToast("No note content to copy", { variant: "warning" });
+    return;
+  }
+
+  try {
+    const markdown = await convertTipTapToMarkdown(content, sdk);
+    await navigator.clipboard.writeText(markdown);
+    sdk.window.showToast("Copied to clipboard as Markdown", {
+      variant: "success",
+    });
+  } catch (error) {
+    sdk.window.showToast(`Failed to copy: ${String(error)}`, {
+      variant: "error",
+    });
+  }
+};
 
 watch(inputRef, (value) => {
   editorStore.renamingInputRef = value;
@@ -116,11 +139,22 @@ watch(
         </div>
       </div>
     </div>
-    <div
-      class="p-2 cursor-pointer hover:text-gray-300 transition-colors"
-      @click="notesStore.selectNote(undefined)"
-    >
-      <i class="fas fa-times"></i>
+    <div class="flex items-center">
+      <div
+        class="p-2 cursor-pointer hover:text-gray-300 transition-colors flex items-center gap-1"
+        title="Copy as Markdown"
+        @click="copyAsMarkdown()"
+      >
+        <i class="fas fa-copy"></i>
+        <span class="text-sm">Copy as Markdown</span>
+      </div>
+      <div
+        class="p-2 cursor-pointer hover:text-gray-300 transition-colors"
+        title="Close note"
+        @click="notesStore.selectNote(undefined)"
+      >
+        <i class="fas fa-times"></i>
+      </div>
     </div>
   </div>
 </template>
