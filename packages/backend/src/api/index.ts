@@ -1,3 +1,4 @@
+import { getFileContent } from "./file";
 import { createFolder, deleteFolder } from "./folder";
 import { getLegacyNotes, migrateNote } from "./migration";
 import {
@@ -24,4 +25,5 @@ export {
   getCurrentProjectId,
   getLegacyNotes,
   migrateNote,
+  getFileContent,
 };

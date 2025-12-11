@@ -30,6 +30,7 @@ import "./editor.css";
 import { ArrowKeysFix } from "./extensions/arrows-fix";
 import { MarkdownHeading } from "./extensions/markdown-heading";
 import MarkdownStyling from "./extensions/markdown-styling";
+import { createFileMention } from "./extensions/mentions/mention-file";
 import { createSessionMention } from "./extensions/mentions/mention-request";
 import createSuggestion from "./extensions/mentions/suggestion";
 import { Search } from "./extensions/search";
@@ -46,6 +47,7 @@ const sdk = useSDK();
 const notesStore = useNotesStore();
 const suggestion = createSuggestion(sdk);
 const SessionMention = createSessionMention(sdk);
+const FileMention = createFileMention(sdk);
 
 const MAX_IMAGE_SIZE_MB = 30;
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
@@ -185,7 +187,8 @@ const editor = useEditor({
     TableRow,
     TableHeader,
     TableCell,
-    SlashCommands,
+    FileMention,
+    SlashCommands.configure({ sdk }),
   ],
   editorProps: {
     attributes: {
@@ -255,7 +258,6 @@ let previousNotePath: string | undefined;
 watch(
   () => notesStore.currentNote,
   (newNote, oldNote) => {
-    // Save cursor position of the previous note before switching
     if (previousNotePath && editor.value) {
       const { from, to } = editor.value.state.selection;
       cursorPositions.set(previousNotePath, { from, to });
