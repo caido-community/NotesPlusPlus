@@ -181,7 +181,7 @@ function formatFileSize(bytes: number): string {
 
 function getFileExtension(filename: string): string {
   const parts = filename.split(".");
-  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "";
+  return parts.length > 1 ? parts[parts.length - 1]!.toLowerCase() : "";
 }
 
 function getLanguageExtension(ext: string) {
