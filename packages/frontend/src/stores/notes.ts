@@ -119,6 +119,10 @@ export const useNotesStore = defineStore("notes", () => {
         }
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("No project found")) {
+        return;
+      }
       sdk.window.showToast(`Error loading note tree: ${error}`, {
         variant: "error",
       });
