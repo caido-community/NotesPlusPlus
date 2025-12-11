@@ -6,6 +6,7 @@ import {
   deleteFolder,
   deleteNote,
   getCurrentProjectId,
+  getFileContent,
   getLegacyNotes,
   getNote,
   getTree,
@@ -31,6 +32,7 @@ export type API = DefineAPI<{
   getCurrentProjectId: typeof getCurrentProjectId;
   getLegacyNotes: typeof getLegacyNotes;
   migrateNote: typeof migrateNote;
+  getFileContent: typeof getFileContent;
 }>;
 
 export function init(sdk: SDK<API, BackendEvents>) {
@@ -46,6 +48,7 @@ export function init(sdk: SDK<API, BackendEvents>) {
   sdk.api.register("getCurrentProjectId", getCurrentProjectId);
   sdk.api.register("getLegacyNotes", getLegacyNotes);
   sdk.api.register("migrateNote", migrateNote);
+  sdk.api.register("getFileContent", getFileContent);
 
   sdk.events.onProjectChange((sdk, project) => {
     sdk.api.send("notes++:projectChange", project?.getId());

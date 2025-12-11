@@ -7,6 +7,8 @@ const props = defineProps<{
 
 const shouldShowMenu = () => {
   if (!props.editor.isActive("table")) return false;
+  const { from, to } = props.editor.state.selection;
+  if (from === to) return false;
   return (
     props.editor.isActive("tableCell") || props.editor.isActive("tableHeader")
   );
@@ -50,7 +52,9 @@ const deleteTable = () => {
   >
     <button title="Add column left" @click="addColumnBefore">+Col</button>
     <button title="Add column right" @click="addColumnAfter">Col+</button>
-    <button title="Delete column" class="del" @click="deleteColumn">−Col</button>
+    <button title="Delete column" class="del" @click="deleteColumn">
+      −Col
+    </button>
     <span class="sep"></span>
     <button title="Add row above" @click="addRowBefore">+Row</button>
     <button title="Add row below" @click="addRowAfter">Row+</button>
