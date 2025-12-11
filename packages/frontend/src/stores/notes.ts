@@ -119,7 +119,8 @@ export const useNotesStore = defineStore("notes", () => {
         }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       if (errorMessage.includes("No project found")) {
         return;
       }
