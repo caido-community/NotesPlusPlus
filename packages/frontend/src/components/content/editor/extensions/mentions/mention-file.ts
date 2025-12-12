@@ -283,6 +283,7 @@ export const createFileMention = (sdk: FrontendSDK) => {
                 syntaxHighlighting(githubDarkHighlight),
                 EditorView.editable.of(false),
                 EditorState.readOnly.of(true),
+                EditorView.lineWrapping,
                 lineNumbers(),
               ];
 
