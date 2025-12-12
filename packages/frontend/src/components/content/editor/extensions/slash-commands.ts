@@ -125,6 +125,12 @@ function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
+function escapeHtml(text: string): string {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 const isAtLineStart = (state: {
   doc: {
     resolve: (pos: number) => {
@@ -387,7 +393,7 @@ export const SlashCommands = Extension.create<SlashCommandsOptions>({
             .map(
               (file, i) => `
             <button class="file-picker-item ${i === fileSelectedIndex ? "selected" : ""}" data-index="${i}">
-              <span class="file-picker-name">${file.name}</span>
+              <span class="file-picker-name">${escapeHtml(file.name)}</span>
               <span class="file-picker-size">${formatFileSize(file.size)}</span>
             </button>
           `,
