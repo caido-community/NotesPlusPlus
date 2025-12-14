@@ -1,6 +1,6 @@
 export function currentReplayTabData() {
   const activeTab = document.querySelector(
-    '[data-is-selected="true"][data-session-id]'
+    '[data-is-selected="true"][data-session-id]',
   );
   if (!activeTab) return { id: "", label: "" };
 
