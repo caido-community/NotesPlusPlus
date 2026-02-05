@@ -43,11 +43,11 @@ importers:
         version: 3.24.4
     devDependencies:
       '@caido/sdk-backend':
-        specifier: ^0.48.0
-        version: 0.48.0
+        specifier: ^0.55.2
+        version: 0.55.2
       '@caido/sdk-frontend':
-        specifier: 0.48.0
-        version: 0.48.0(@codemirror/state@6.5.2)(@codemirror/view@6.39.3)
+        specifier: 0.55.2
+        version: 0.55.2(@ai-sdk/provider@3.0.7)(@codemirror/state@6.5.2)(@codemirror/view@6.39.3)(vue@3.5.13(typescript@5.8.3))
       shared:
         specifier: workspace:*
         version: link:../shared
@@ -143,11 +143,11 @@ importers:
         version: 3.5.13(typescript@5.8.3)
     devDependencies:
       '@caido/sdk-backend':
-        specifier: ^0.48.0
-        version: 0.48.0
+        specifier: ^0.55.2
+        version: 0.55.2
       '@caido/sdk-frontend':
-        specifier: ^0.48.0
-        version: 0.48.0(@codemirror/state@6.5.2)(@codemirror/view@6.39.3)
+        specifier: 0.55.2
+        version: 0.55.2(@ai-sdk/provider@3.0.7)(@codemirror/state@6.5.2)(@codemirror/view@6.39.3)(vue@3.5.13(typescript@5.8.3))
       backend:
         specifier: workspace:*
         version: link:../backend
@@ -158,6 +158,10 @@ importers:
   packages/shared: {}
 
 packages:
+
+  '@ai-sdk/provider@3.0.7':
+    resolution: {integrity: sha512-VkPLrutM6VdA924/mG8OS+5frbVTcu6e046D2bgDo00tehBANR1QBJ/mPcZ9tXMFOsVcm6SQArOregxePzTFPw==}
+    engines: {node: '>=18'}
 
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -199,17 +203,19 @@ packages:
     peerDependencies:
       primevue: 4.1.0
 
-  '@caido/quickjs-types@0.18.0':
-    resolution: {integrity: sha512-hRXUVdDvlhEhvkBoWWytoVS2j1KDVZa8dx2Q/KvWUQTR57U8EMSYE9iFgvPhu78gS8z+RF42Zcb7moNx4SDMlw==}
+  '@caido/quickjs-types@0.25.4':
+    resolution: {integrity: sha512-U7Cvi4aHoCN8T2JB+Az3ArqQ3MUK0PRCtBm5Sq1rfqaJ9NymAkh3O29q77Keh3G/zINq2WTkKZq5qJlvrQNl+Q==}
 
-  '@caido/sdk-backend@0.48.0':
-    resolution: {integrity: sha512-eB22xt3GtjoE0paCNlNIGDkw4dcfMm04L4G2W7HEmfkSQi4dMkxvlHd0qfe2ALx9PI5C/KEycZ1rZhucL1sSkw==}
+  '@caido/sdk-backend@0.55.2':
+    resolution: {integrity: sha512-GQXeFQamq0WJAJgjuw7yA8AXZweaKx4RYKpM8xp+Wpc96okxgURBALHlw2tPogPU28Y8zkOu4klJcwMoX97TMg==}
 
-  '@caido/sdk-frontend@0.48.0':
-    resolution: {integrity: sha512-qhKPFmrJBZK0zlxM4OhMEwy8w9TcQN5TtpivIR6s5rFa5u/+lzuCAUSd3ZfAxshDdi5C3SmRrlptGk3KfKXrRg==}
+  '@caido/sdk-frontend@0.55.2':
+    resolution: {integrity: sha512-jHPUUvvs51hcVq3J6vVWitXU7lgPr90RpRfvxR3NchEDOG1/Uv2lCKTZzlDqoDjuO5KulgRzEKZNgKh6bTPeqQ==}
     peerDependencies:
+      '@ai-sdk/provider': ^3.0.1
       '@codemirror/state': ^6.0.0
       '@codemirror/view': ^6.0.0
+      vue: ^3.0.0
 
   '@caido/sdk-shared@0.1.1':
     resolution: {integrity: sha512-JAV5ajUqxZdXYPTmDEvIKBZon8I5uHq44ATj0Nj3BVpllRDUGY9kcBd+PXMD50+3lv1CvhR3/f6q24T0+4aVJQ==}
@@ -596,56 +602,67 @@ packages:
     resolution: {integrity: sha512-mz5POx5Zu58f2xAG5RaRRhp3IZDK7zXGk5sdEDj4o96HeaXhlUwmLFzNlc4hCQi5sGdR12VDgEUqVSHer0lI9g==}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm-musleabihf@4.39.0':
     resolution: {integrity: sha512-+YDwhM6gUAyakl0CD+bMFpdmwIoRDzZYaTWV3SDRBGkMU/VpIBYXXEvkEcTagw/7VVkL2vA29zU4UVy1mP0/Yw==}
     cpu: [arm]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-arm64-gnu@4.39.0':
     resolution: {integrity: sha512-EKf7iF7aK36eEChvlgxGnk7pdJfzfQbNvGV/+l98iiMwU23MwvmV0Ty3pJ0p5WQfm3JRHOytSIqD9LB7Bq7xdQ==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm64-musl@4.39.0':
     resolution: {integrity: sha512-vYanR6MtqC7Z2SNr8gzVnzUul09Wi1kZqJaek3KcIlI/wq5Xtq4ZPIZ0Mr/st/sv/NnaPwy/D4yXg5x0B3aUUA==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-loongarch64-gnu@4.39.0':
     resolution: {integrity: sha512-NMRUT40+h0FBa5fb+cpxtZoGAggRem16ocVKIv5gDB5uLDgBIwrIsXlGqYbLwW8YyO3WVTk1FkFDjMETYlDqiw==}
     cpu: [loong64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-powerpc64le-gnu@4.39.0':
     resolution: {integrity: sha512-0pCNnmxgduJ3YRt+D+kJ6Ai/r+TaePu9ZLENl+ZDV/CdVczXl95CbIiwwswu4L+K7uOIGf6tMo2vm8uadRaICQ==}
     cpu: [ppc64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-riscv64-gnu@4.39.0':
     resolution: {integrity: sha512-t7j5Zhr7S4bBtksT73bO6c3Qa2AV/HqiGlj9+KB3gNF5upcVkx+HLgxTm8DK4OkzsOYqbdqbLKwvGMhylJCPhQ==}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-riscv64-musl@4.39.0':
     resolution: {integrity: sha512-m6cwI86IvQ7M93MQ2RF5SP8tUjD39Y7rjb1qjHgYh28uAPVU8+k/xYWvxRO3/tBN2pZkSMa5RjnPuUIbrwVxeA==}
     cpu: [riscv64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-s390x-gnu@4.39.0':
     resolution: {integrity: sha512-iRDJd2ebMunnk2rsSBYlsptCyuINvxUfGwOUldjv5M4tpa93K8tFMeYGpNk2+Nxl+OBJnBzy2/JCscGeO507kA==}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-x64-gnu@4.39.0':
     resolution: {integrity: sha512-t9jqYw27R6Lx0XKfEFe5vUeEJ5pF3SGIM6gTfONSMb7DuG6z6wfj2yjcoZxHg129veTqU7+wOhY6GX8wmf90dA==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-x64-musl@4.39.0':
     resolution: {integrity: sha512-ThFdkrFDP55AIsIZDKSBWEt/JcWlCzydbZHinZ0F/r1h83qbGeenCt/G/wG2O0reuENDD2tawfAj2s8VK7Bugg==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-win32-arm64-msvc@4.39.0':
     resolution: {integrity: sha512-jDrLm6yUtbOg2TYB3sBF3acUnAwsIksEYjLeHL+TJv9jg+TmTwdyjnDex27jqEMakNKf3RwwPahDIt7QXCSqRQ==}
@@ -1910,6 +1927,9 @@ packages:
   json-schema-traverse@1.0.0:
     resolution: {integrity: sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==}
 
+  json-schema@0.4.0:
+    resolution: {integrity: sha512-es94M3nTIfsEPisRafak+HDLfHXnKBhV3vU5eqPcS3flIWqcxJWgXHXiey3YrpaNsanY5ei1VoYEbOzijuq9BA==}
+
   json-stable-stringify-without-jsonify@1.0.1:
     resolution: {integrity: sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==}
 
@@ -2926,6 +2946,10 @@ packages:
 
 snapshots:
 
+  '@ai-sdk/provider@3.0.7':
+    dependencies:
+      json-schema: 0.4.0
+
   '@alloc/quick-lru@5.2.0': {}
 
   '@babel/helper-string-parser@7.25.9': {}
@@ -3003,17 +3027,19 @@ snapshots:
     dependencies:
       primevue: 4.1.0(vue@3.5.13(typescript@5.8.3))
 
-  '@caido/quickjs-types@0.18.0': {}
+  '@caido/quickjs-types@0.25.4': {}
 
-  '@caido/sdk-backend@0.48.0':
+  '@caido/sdk-backend@0.55.2':
     dependencies:
-      '@caido/quickjs-types': 0.18.0
+      '@caido/quickjs-types': 0.25.4
       '@caido/sdk-shared': 0.1.1
 
-  '@caido/sdk-frontend@0.48.0(@codemirror/state@6.5.2)(@codemirror/view@6.39.3)':
+  '@caido/sdk-frontend@0.55.2(@ai-sdk/provider@3.0.7)(@codemirror/state@6.5.2)(@codemirror/view@6.39.3)(vue@3.5.13(typescript@5.8.3))':
     dependencies:
+      '@ai-sdk/provider': 3.0.7
       '@codemirror/state': 6.5.2
       '@codemirror/view': 6.39.3
+      vue: 3.5.13(typescript@5.8.3)
 
   '@caido/sdk-shared@0.1.1': {}
 
@@ -4933,6 +4959,8 @@ snapshots:
   json-schema-traverse@0.4.1: {}
 
   json-schema-traverse@1.0.0: {}
+
+  json-schema@0.4.0: {}
 
   json-stable-stringify-without-jsonify@1.0.1: {}
 

@@ -34,10 +34,11 @@ export default defineConfig({
         plugins: [vue()],
         build: {
           rollupOptions: {
-            external: ["@caido/frontend-sdk"],
+            external: ["@caido/frontend-sdk", "vue"],
           },
         },
         resolve: {
+          dedupe: ["vue"],
           alias: [
             {
               find: "@",

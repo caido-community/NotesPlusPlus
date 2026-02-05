@@ -16,6 +16,7 @@ import {
 } from "@/actions/actions";
 import { emitter } from "@/utils/eventBus";
 import { convertMarkdownToTipTap } from "@/utils/markdownToJSON";
+import { registerVoiceNotes } from "./register-tts";
 
 export const init = (sdk: FrontendSDK) => {
   const pinia = createPinia();
@@ -94,6 +95,8 @@ export const init = (sdk: FrontendSDK) => {
   sdk.sidebar.registerItem("Notes++", "/notes", {
     icon: "fas fa-file-alt",
   });
+
+  registerVoiceNotes(sdk);
 
   emitter.on("confirmMigration", (notes) => {
     migrateNotes(sdk, notes);
