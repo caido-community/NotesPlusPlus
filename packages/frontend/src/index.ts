@@ -13,6 +13,7 @@ import {
   sendReplaySessionToNote,
   sendSelectedTextToNote,
   showNoteModal,
+  showSearchModal,
 } from "@/actions/actions";
 import { emitter } from "@/utils/eventBus";
 import { convertMarkdownToTipTap } from "@/utils/markdownToJSON";
@@ -57,9 +58,16 @@ export const init = (sdk: FrontendSDK) => {
     run: () => sendReplaySessionToNote(sdk),
   });
 
+  sdk.commands.register("notesplusplus:search-notes", {
+    name: "Search Notes",
+    group: "Notes++",
+    run: () => showSearchModal(sdk),
+  });
+
   sdk.commandPalette.register("notesplusplus:floating-modal");
   sdk.commandPalette.register("notesplusplus:send-selected-text");
   sdk.commandPalette.register("notesplusplus:send-replay-session");
+  sdk.commandPalette.register("notesplusplus:search-notes");
 
   sdk.menu.registerItem({
     type: "Request",
@@ -74,6 +82,7 @@ export const init = (sdk: FrontendSDK) => {
   });
 
   sdk.shortcuts.register("notesplusplus:floating-modal", ["cmd", "shift", "N"]);
+  sdk.shortcuts.register("notesplusplus:search-notes", ["cmd", "shift", "S"]);
   sdk.shortcuts.register("notesplusplus:send-selected-text", [
     "ctrl",
     "shift",

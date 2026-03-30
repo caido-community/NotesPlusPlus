@@ -1,8 +1,10 @@
 import type { Folder, Note, NoteContentItem, NoteModalSaveData } from "shared";
-import { computed, reactive, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
+import { useDraggable } from "@/composables/useDraggable";
 import { useSDK } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
+import type { ModalPosition } from "@/types";
 import { currentReplayTabData } from "@/utils/caido";
 import {
   addParagraphToContent,
@@ -11,18 +13,8 @@ import {
   createTextParagraph,
 } from "@/utils/noteUtils";
 
-interface Position {
-  x: number;
-  y: number;
-}
-
-interface Size {
-  width: number;
-  height: number;
-}
-
 interface NoteModalOptions {
-  initialPosition?: Position;
+  initialPosition?: ModalPosition;
   onClose?: () => void;
   onSave?: (data: NoteModalSaveData) => void;
 }
@@ -36,19 +28,10 @@ export function useNoteModal(options: NoteModalOptions = {}) {
   const textarea = ref<HTMLTextAreaElement | undefined>(undefined);
   const isReplayPage = computed(() => window.location.hash === "#/replay");
 
-  const position = reactive<Position>({
-    x: options.initialPosition?.x || 100,
-    y: options.initialPosition?.y || 100,
+  const { position, size, startDrag, startResize } = useDraggable({
+    initialPosition: options.initialPosition,
+    initialSize: { width: 400, height: 150 },
   });
-
-  const size = reactive<Size>({
-    width: 400,
-    height: 150,
-  });
-
-  let isDragging = false;
-  let isResizing = false;
-  let dragOffset = { x: 0, y: 0 };
 
   const availableNotes = computed(() => {
     if (!notesStore.tree) return [];
@@ -70,58 +53,6 @@ export function useNoteModal(options: NoteModalOptions = {}) {
     collectNotes(notesStore.tree);
     return notes;
   });
-
-  function startDrag(event: MouseEvent) {
-    if (
-      (event.target as Element).closest(".resize-handle") ||
-      (event.target as Element).closest("select")
-    )
-      return;
-
-    isDragging = true;
-    dragOffset = {
-      x: event.clientX - position.x,
-      y: event.clientY - position.y,
-    };
-
-    document.addEventListener("mousemove", handleDrag);
-    document.addEventListener("mouseup", stopDrag);
-  }
-
-  function handleDrag(event: MouseEvent) {
-    if (isDragging) {
-      position.x = event.clientX - dragOffset.x;
-      position.y = event.clientY - dragOffset.y;
-    }
-  }
-
-  function stopDrag() {
-    isDragging = false;
-    document.removeEventListener("mousemove", handleDrag);
-    document.removeEventListener("mouseup", stopDrag);
-  }
-
-  function startResize(event: MouseEvent) {
-    isResizing = true;
-    event.preventDefault();
-    document.addEventListener("mousemove", handleResize);
-    document.addEventListener("mouseup", stopResize);
-  }
-
-  function handleResize(event: MouseEvent) {
-    if (isResizing) {
-      const newWidth = event.clientX - position.x;
-      const newHeight = event.clientY - position.y;
-      size.width = Math.max(200, newWidth);
-      size.height = Math.max(150, newHeight);
-    }
-  }
-
-  function stopResize() {
-    isResizing = false;
-    document.removeEventListener("mousemove", handleResize);
-    document.removeEventListener("mouseup", stopResize);
-  }
 
   function close() {
     options.onClose?.();

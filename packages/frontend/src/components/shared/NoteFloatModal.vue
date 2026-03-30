@@ -4,17 +4,13 @@ import { onBeforeUnmount, onMounted } from "vue";
 
 import { useNoteModal } from "@/composables/useNoteModal";
 import { useSDK } from "@/plugins/sdk";
+import type { ModalPosition } from "@/types";
 
 const sdk = useSDK();
 
-interface Position {
-  x: number;
-  y: number;
-}
-
 const props = defineProps({
   initialPosition: {
-    type: Object as () => Position,
+    type: Object as () => ModalPosition,
     default: () => ({ x: 100, y: 100 }),
   },
 });
