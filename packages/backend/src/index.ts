@@ -3,12 +3,16 @@ import type { DefineAPI, SDK } from "caido:plugin";
 import {
   createFolder,
   createNote,
+  createReminder,
   deleteFolder,
   deleteNote,
+  deleteReminder,
+  dismissReminder,
   getCurrentProjectId,
   getFileContent,
   getLegacyNotes,
   getNote,
+  getReminders,
   getTree,
   migrateNote,
   moveItem,
@@ -16,6 +20,7 @@ import {
   updateNote,
 } from "./api";
 import { type BackendEvents } from "./types/events";
+import { startReminderTimer } from "./utils/reminderTimer";
 
 export type { BackendEvents } from "./types/events";
 
@@ -33,6 +38,10 @@ export type API = DefineAPI<{
   getLegacyNotes: typeof getLegacyNotes;
   migrateNote: typeof migrateNote;
   getFileContent: typeof getFileContent;
+  getReminders: typeof getReminders;
+  createReminder: typeof createReminder;
+  deleteReminder: typeof deleteReminder;
+  dismissReminder: typeof dismissReminder;
 }>;
 
 export function init(sdk: SDK<API, BackendEvents>) {
@@ -49,10 +58,16 @@ export function init(sdk: SDK<API, BackendEvents>) {
   sdk.api.register("getLegacyNotes", getLegacyNotes);
   sdk.api.register("migrateNote", migrateNote);
   sdk.api.register("getFileContent", getFileContent);
+  sdk.api.register("getReminders", getReminders);
+  sdk.api.register("createReminder", createReminder);
+  sdk.api.register("deleteReminder", deleteReminder);
+  sdk.api.register("dismissReminder", dismissReminder);
 
   sdk.events.onProjectChange((sdk, project) => {
     sdk.api.send("notes++:projectChange", project?.getId());
   });
+
+  startReminderTimer(sdk);
 
   sdk.console.log("Notes++ backend initialized successfully");
 }

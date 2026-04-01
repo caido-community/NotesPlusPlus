@@ -33,18 +33,24 @@ import MarkdownStyling from "./extensions/markdown-styling";
 import { createFileMention } from "./extensions/mentions/mention-file";
 import { createSessionMention } from "./extensions/mentions/mention-request";
 import createSuggestion from "./extensions/mentions/suggestion";
+import { ReminderNode } from "./extensions/reminder-node";
 import { Search } from "./extensions/search";
 import SearchUI from "./extensions/search/SearchUI.vue";
 import { SlashCommands } from "./extensions/slash-commands";
+import { showReminderPicker } from "./reminders/showReminderPicker";
 import TableMenu from "./TableMenu.vue";
 
 import { useSDK } from "@/plugins/sdk";
+import { useContextMenuStore } from "@/stores/contextMenu";
 import { useNotesStore } from "@/stores/notes";
+import { useRemindersStore } from "@/stores/reminders";
 import { emitter } from "@/utils/eventBus";
 import { compressImage } from "@/utils/images";
 
 const sdk = useSDK();
 const notesStore = useNotesStore();
+const contextMenuStore = useContextMenuStore();
+const remindersStore = useRemindersStore();
 const suggestion = createSuggestion(sdk);
 const SessionMention = createSessionMention(sdk);
 const FileMention = createFileMention(sdk);
@@ -188,11 +194,37 @@ const editor = useEditor({
     TableHeader,
     TableCell,
     FileMention,
+    ReminderNode,
     SlashCommands.configure({ sdk }),
   ],
   editorProps: {
     attributes: {
       class: "mx-auto focus:outline-none font-mono dark:text-surface-100",
+    },
+    handleDOMEvents: {
+      contextmenu: (view: EditorView, event: MouseEvent) => {
+        const { from, to } = view.state.selection;
+        if (from === to) return false;
+
+        event.preventDefault();
+        const selectedText = view.state.doc.textBetween(from, to, " ");
+
+        contextMenuStore.showContextMenu(event, [
+          {
+            label: "Set Reminder",
+            icon: "fas fa-bell",
+            command: () => {
+              emitter.emit("openReminderPicker", {
+                selectedText,
+                position: { x: event.clientX, y: event.clientY },
+                selectionRange: { from, to },
+              });
+            },
+          },
+        ]);
+
+        return true;
+      },
     },
     handleDrop: (
       view: EditorView,
@@ -264,8 +296,9 @@ watch(
     }
 
     if (editor.value && newNote) {
-      const content = newNote.content;
-      editor.value.commands.setContent(content);
+      editor.value.storage.reminderNode.isContentReplacement = true;
+      editor.value.commands.setContent(newNote.content);
+      editor.value.storage.reminderNode.isContentReplacement = false;
       restoreCursorPosition(newNote.path);
     }
 
@@ -274,19 +307,60 @@ watch(
   { immediate: true },
 );
 
+const handleCancelReminder = (data: { id: string }) => {
+  remindersStore.deleteReminder(data.id);
+};
+
+const handleOpenReminderPicker = (data: {
+  selectedText: string;
+  position: { x: number; y: number };
+  selectionRange: { from: number; to: number };
+}) => {
+  showReminderPicker(data.position, async (reminderAt: Date) => {
+    if (!notesStore.currentNotePath || !editor.value) return;
+
+    const reminder = await remindersStore.createReminder(
+      notesStore.currentNotePath,
+      data.selectedText,
+      reminderAt.toISOString(),
+    );
+
+    if (reminder) {
+      editor.value
+        .chain()
+        .focus()
+        .setTextSelection(data.selectionRange.to)
+        .insertContent({
+          type: "reminderNode",
+          attrs: {
+            id: reminder.id,
+            reminderAt: reminder.reminderAt,
+            context: data.selectedText,
+          },
+        })
+        .run();
+    }
+  });
+};
+
 onMounted(() => {
   if (editor.value && notesStore.currentNote) {
-    const content = notesStore.currentNote.content;
-    editor.value.commands.setContent(content);
+    editor.value.storage.reminderNode.isContentReplacement = true;
+    editor.value.commands.setContent(notesStore.currentNote.content);
+    editor.value.storage.reminderNode.isContentReplacement = false;
     restoreCursorPosition(notesStore.currentNote.path);
   }
 
   emitter.on("restoreFocus", restoreFocus);
+  emitter.on("openReminderPicker", handleOpenReminderPicker);
+  emitter.on("cancelReminder", handleCancelReminder);
 });
 
 onUnmounted(() => {
   saveCursorPosition();
   emitter.off("restoreFocus", restoreFocus);
+  emitter.off("openReminderPicker", handleOpenReminderPicker);
+  emitter.off("cancelReminder", handleCancelReminder);
 });
 </script>
 

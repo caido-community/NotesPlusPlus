@@ -11,6 +11,12 @@ import {
   updateNote,
 } from "./note";
 import { getCurrentProjectId } from "./project";
+import {
+  createReminder,
+  deleteReminder,
+  dismissReminder,
+  getReminders,
+} from "./reminder";
 
 export {
   getTree,
@@ -26,4 +32,8 @@ export {
   getLegacyNotes,
   migrateNote,
   getFileContent,
+  getReminders,
+  createReminder,
+  deleteReminder,
+  dismissReminder,
 };
