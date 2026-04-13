@@ -2,6 +2,7 @@ import { type NoteContentItem } from "shared";
 import { createApp, h } from "vue";
 
 import NoteFloatModal from "@/components/shared/NoteFloatModal.vue";
+import NoteSearchModal from "@/components/shared/NoteSearchModal.vue";
 import { SDKPlugin } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
 import type { FrontendSDK } from "@/types";
@@ -34,6 +35,34 @@ export const showNoteModal = (sdk: FrontendSDK) => {
           modalContainer.remove();
         },
         onSave: (data: { content: string; attachContext: boolean }) => {
+          modalApp.unmount();
+          modalContainer.remove();
+        },
+      }),
+  });
+
+  modalApp.use(SDKPlugin, sdk);
+  modalApp.mount(modalContainer);
+};
+
+/**
+ * Shows the search modal for finding and viewing existing notes
+ */
+export const showSearchModal = (sdk: FrontendSDK) => {
+  const modalContainer = document.createElement("div");
+  modalContainer.id = "note-search-modal-container";
+  document.body.appendChild(modalContainer);
+
+  const position = {
+    x: Math.max(0, window.innerWidth / 2 - 250),
+    y: Math.max(0, window.innerHeight / 2 - 200),
+  };
+
+  const modalApp = createApp({
+    render: () =>
+      h(NoteSearchModal, {
+        initialPosition: position,
+        onClose: () => {
           modalApp.unmount();
           modalContainer.remove();
         },

@@ -37,6 +37,16 @@ export interface NoteModalSaveData {
   notePath: string;
 }
 
+export interface Reminder {
+  id: string;
+  notePath: string;
+  context: string;
+  reminderAt: string;
+  createdAt: string;
+  triggered: boolean;
+  dismissed: boolean;
+}
+
 export type Result<T> =
   | { kind: "Error"; error: string }
   | { kind: "Success"; value: T };
