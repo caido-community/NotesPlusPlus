@@ -42,6 +42,12 @@ export async function createReminder(
   try {
     createReminderSchema.parse({ notePath, context, reminderAt });
 
+    const parsedDate = new Date(reminderAt);
+    if (isNaN(parsedDate.getTime())) {
+      return error("Invalid reminder date");
+    }
+    const normalizedReminderAt = parsedDate.toISOString();
+
     const projectIDResult = await ensureProjectDirectory(sdk);
     if (projectIDResult.kind === "Error") {
       return error(projectIDResult.error);
@@ -52,7 +58,7 @@ export async function createReminder(
       id: randomUUID(),
       notePath,
       context,
-      reminderAt,
+      reminderAt: normalizedReminderAt,
       createdAt: new Date().toISOString(),
       triggered: false,
       dismissed: false,

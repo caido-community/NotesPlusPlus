@@ -1,9 +1,20 @@
 /**
  * Two-tone ascending chime via Web Audio API.
+ * Uses a cached singleton AudioContext to avoid hitting browser limits.
  */
+
+let cachedCtx: AudioContext | undefined;
+
+function getAudioContext(): AudioContext {
+  if (!cachedCtx || cachedCtx.state === "closed") {
+    cachedCtx = new AudioContext();
+  }
+  return cachedCtx;
+}
+
 export function playNotificationSound(): void {
   try {
-    const ctx = new AudioContext();
+    const ctx = getAudioContext();
     const play = () => {
       const frequencies = [587.33, 880];
 
@@ -26,7 +37,10 @@ export function playNotificationSound(): void {
     };
 
     if (ctx.state === "suspended") {
-      ctx.resume().then(play);
+      ctx
+        .resume()
+        .then(play)
+        .catch(() => {});
     } else {
       play();
     }

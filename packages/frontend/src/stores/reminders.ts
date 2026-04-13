@@ -49,17 +49,21 @@ export const useRemindersStore = defineStore("reminders", () => {
 
   /** User explicitly dismissed — persists to backend and marks chip as dismissed. */
   async function dismissReminder(reminderId: string) {
+    const removedToast = activeToasts.value.find((r) => r.id === reminderId);
     activeToasts.value = activeToasts.value.filter((r) => r.id !== reminderId);
-
-    setReminderState(reminderId, "dismissed");
-    emitter.emit("reminderStateChanged", {
-      id: reminderId,
-      state: "dismissed",
-    });
 
     try {
       await repository.dismissReminder(reminderId);
+
+      setReminderState(reminderId, "dismissed");
+      emitter.emit("reminderStateChanged", {
+        id: reminderId,
+        state: "dismissed",
+      });
     } catch (error) {
+      if (removedToast) {
+        activeToasts.value.push(removedToast);
+      }
       sdk.window.showToast(`Error dismissing reminder: ${error}`, {
         variant: "error",
       });
@@ -84,7 +88,19 @@ export const useRemindersStore = defineStore("reminders", () => {
 
   repository
     .getReminders()
-    .then(loadReminderStates)
+    .then((reminders) => {
+      loadReminderStates(reminders);
+      for (const r of reminders) {
+        if (r.dismissed) {
+          emitter.emit("reminderStateChanged", {
+            id: r.id,
+            state: "dismissed",
+          });
+        } else if (r.triggered) {
+          emitter.emit("reminderStateChanged", { id: r.id, state: "missed" });
+        }
+      }
+    })
     .catch(() => {});
 
   return {

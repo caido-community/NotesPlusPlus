@@ -61,6 +61,7 @@ function handleDateInput(event: Event) {
 function handleConfirm() {
   const date = new Date(dateValue.value);
   if (isNaN(date.getTime())) return;
+  if (date <= new Date()) return;
   emit("confirm", date);
 }
 

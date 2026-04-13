@@ -36,7 +36,7 @@ if (!document.getElementById(styleId)) {
       flex-shrink: 0;
     }
     .reminder-chip__close {
-      display: none;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       background: none;
@@ -45,15 +45,17 @@ if (!document.getElementById(styleId)) {
       padding: 0 2px;
       margin-left: 2px;
       font-size: 9px;
-      opacity: 0.6;
+      opacity: 0;
       color: inherit;
       transition: opacity 0.15s ease;
     }
-    .reminder-chip__close:hover {
+    .reminder-chip__close:hover,
+    .reminder-chip__close:focus-visible {
       opacity: 1;
     }
-    .reminder-chip--cancellable:hover .reminder-chip__close {
-      display: inline-flex;
+    .reminder-chip--cancellable:hover .reminder-chip__close,
+    .reminder-chip--cancellable:focus-within .reminder-chip__close {
+      opacity: 0.6;
     }
   `;
   document.head.appendChild(style);
@@ -154,6 +156,7 @@ export const ReminderNode = Node.create({
       const closeBtn = document.createElement("button");
       closeBtn.className = "reminder-chip__close";
       closeBtn.title = "Cancel reminder";
+      closeBtn.setAttribute("aria-label", "Cancel reminder");
       closeBtn.innerHTML = '<i class="fas fa-times"></i>';
       closeBtn.addEventListener("click", (e) => {
         e.stopPropagation();

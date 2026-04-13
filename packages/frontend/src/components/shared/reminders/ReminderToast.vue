@@ -17,6 +17,7 @@ const TICK_MS = 50;
 const MAX_CONTEXT_LENGTH = 60;
 
 const isHovered = ref(false);
+const isFocused = ref(false);
 const progress = ref(100);
 const visible = ref(false);
 
@@ -25,7 +26,7 @@ let elapsed = 0;
 
 function startTimer() {
   timerId = setInterval(() => {
-    if (isHovered.value) return;
+    if (isHovered.value || isFocused.value) return;
 
     elapsed += TICK_MS;
     progress.value = Math.max(0, 100 - (elapsed / AUTO_DISMISS_MS) * 100);
@@ -99,6 +100,8 @@ onUnmounted(() => {
     }"
     @mouseenter="isHovered = true"
     @mouseleave="isHovered = false"
+    @focusin="isFocused = true"
+    @focusout="isFocused = false"
   >
     <div class="flex items-center justify-between px-3.5 pt-2.5">
       <div

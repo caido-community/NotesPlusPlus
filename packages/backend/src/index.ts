@@ -24,6 +24,8 @@ import { startReminderTimer } from "./utils/reminderTimer";
 
 export type { BackendEvents } from "./types/events";
 
+let stopReminderTimer: (() => void) | undefined;
+
 export type API = DefineAPI<{
   getTree: typeof getTree;
   getNote: typeof getNote;
@@ -67,7 +69,8 @@ export function init(sdk: SDK<API, BackendEvents>) {
     sdk.api.send("notes++:projectChange", project?.getId());
   });
 
-  startReminderTimer(sdk);
+  stopReminderTimer?.();
+  stopReminderTimer = startReminderTimer(sdk);
 
   sdk.console.log("Notes++ backend initialized successfully");
 }

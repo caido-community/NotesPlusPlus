@@ -2,6 +2,7 @@ import * as fs from "fs";
 import path from "path";
 
 import type { Reminder } from "shared";
+import { z } from "zod";
 
 import {
   createDirectory,
@@ -12,6 +13,18 @@ import {
 import { getNoteRootPath } from "./paths";
 
 const REMINDERS_FILENAME = "reminders.json";
+
+const ReminderSchema = z.object({
+  id: z.string(),
+  notePath: z.string(),
+  context: z.string(),
+  reminderAt: z.string(),
+  createdAt: z.string(),
+  triggered: z.boolean(),
+  dismissed: z.boolean(),
+});
+
+const RemindersArraySchema = z.array(ReminderSchema);
 
 export function getRemindersFilePath(projectID: string): string {
   return path.join(getNoteRootPath(projectID), REMINDERS_FILENAME);
@@ -27,7 +40,8 @@ export function readRemindersFile(projectID: string): Reminder[] {
   try {
     const raw = fs.readFileSync(toSystemPath(filePath), "utf8");
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as Reminder[]) : [];
+    const result = RemindersArraySchema.safeParse(parsed);
+    return result.success ? (result.data as Reminder[]) : [];
   } catch {
     return [];
   }

@@ -1,15 +1,11 @@
 import { useSDK } from "@/plugins/sdk";
+import { handleBackendCall } from "@/utils/backend";
 
 export const useRemindersRepository = () => {
   const sdk = useSDK();
 
   async function getReminders() {
-    const result = await sdk.backend.getReminders();
-    if (result.kind === "Error") {
-      throw new Error(`Error loading reminders: ${result.error}`);
-    }
-
-    return result.value;
+    return handleBackendCall(sdk.backend.getReminders(), sdk);
   }
 
   async function createReminder(
@@ -17,34 +13,18 @@ export const useRemindersRepository = () => {
     context: string,
     reminderAt: string,
   ) {
-    const result = await sdk.backend.createReminder(
-      notePath,
-      context,
-      reminderAt,
+    return handleBackendCall(
+      sdk.backend.createReminder(notePath, context, reminderAt),
+      sdk,
     );
-    if (result.kind === "Error") {
-      throw new Error(`Error creating reminder: ${result.error}`);
-    }
-
-    return result.value;
   }
 
   async function deleteReminder(reminderId: string) {
-    const result = await sdk.backend.deleteReminder(reminderId);
-    if (result.kind === "Error") {
-      throw new Error(`Error deleting reminder: ${result.error}`);
-    }
-
-    return result.value;
+    return handleBackendCall(sdk.backend.deleteReminder(reminderId), sdk);
   }
 
   async function dismissReminder(reminderId: string) {
-    const result = await sdk.backend.dismissReminder(reminderId);
-    if (result.kind === "Error") {
-      throw new Error(`Error dismissing reminder: ${result.error}`);
-    }
-
-    return result.value;
+    return handleBackendCall(sdk.backend.dismissReminder(reminderId), sdk);
   }
 
   return {
