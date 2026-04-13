@@ -15,6 +15,7 @@ import {
   showNoteModal,
   showSearchModal,
 } from "@/actions/actions";
+import { mountReminderNotifications } from "@/components/shared/reminders/mountReminderNotifications";
 import { emitter } from "@/utils/eventBus";
 import { convertMarkdownToTipTap } from "@/utils/markdownToJSON";
 
@@ -39,6 +40,8 @@ export const init = (sdk: FrontendSDK) => {
   root.id = `plugin--notesplusplus`;
 
   app.mount(root);
+
+  mountReminderNotifications(sdk, pinia);
 
   sdk.commands.register("notesplusplus:floating-modal", {
     name: "Write Note",
