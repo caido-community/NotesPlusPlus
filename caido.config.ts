@@ -1,7 +1,8 @@
-import { defineConfig } from "@caido-community/dev";
-import tailwindCaido from "@caido/tailwindcss";
-import vue from "@vitejs/plugin-vue";
 import path from "path";
+
+import tailwindCaido from "@caido/tailwindcss";
+import { defineConfig } from "@caido-community/dev";
+import vue from "@vitejs/plugin-vue";
 import prefixwrap from "postcss-prefixwrap";
 import tailwindcss from "tailwindcss";
 import tailwindPrimeui from "tailwindcss-primeui";
@@ -11,7 +12,7 @@ export default defineConfig({
   id,
   name: "Notes++",
   description: "Create and edit notes in Caido",
-  version: "2.3.1",
+  version: "2.3.2",
   author: {
     name: "_StaticFlow_",
     email: "tanner.barnes@kashx.io",
