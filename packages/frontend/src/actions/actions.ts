@@ -125,6 +125,56 @@ export const sendSelectedTextToNote = async (sdk: FrontendSDK) => {
 };
 
 /**
+ * Sends raw text to the currently open note
+ */
+export const sendTextToNote = async (sdk: FrontendSDK, text: string) => {
+  const notesStore = useNotesStore();
+  const textToSend = text;
+  if (!textToSend) {
+    sdk.window.showToast("No text to send", { variant: "warning" });
+    return;
+  }
+
+  if (!notesStore.currentNotePath) {
+    sdk.window.showToast(
+      "No note is currently open. Please open a note first.",
+      { variant: "warning" },
+    );
+    return;
+  }
+
+  try {
+    await notesStore.loadNote(notesStore.currentNotePath);
+
+    if (notesStore.currentNote) {
+      const paragraph = createTextParagraph(textToSend);
+      const updatedContent = addParagraphToContent(
+        notesStore.currentNote.content,
+        paragraph,
+      );
+
+      await notesStore.updateNoteContent(
+        notesStore.currentNotePath,
+        updatedContent,
+      );
+
+      sdk.window.showToast(
+        `Text added to note ${notesStore.currentNotePath}`,
+        {
+          variant: "success",
+        },
+      );
+
+      await notesStore.refreshTree();
+    }
+  } catch (error) {
+    sdk.window.showToast(`Error adding text to note: ${error}`, {
+      variant: "error",
+    });
+  }
+};
+
+/**
  * Sends the replay session to the currently open note
  */
 export const sendReplaySessionToNote = async (sdk: FrontendSDK) => {
