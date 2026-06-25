@@ -17,6 +17,13 @@ import {
   dismissReminder,
   getReminders,
 } from "./reminder";
+import {
+  deleteSavedItem,
+  getSavedItem,
+  saveDraftRequest,
+  saveRequest,
+  saveResponse,
+} from "./savedItem";
 
 export {
   getTree,
@@ -36,4 +43,9 @@ export {
   createReminder,
   deleteReminder,
   dismissReminder,
+  saveRequest,
+  saveResponse,
+  saveDraftRequest,
+  getSavedItem,
+  deleteSavedItem,
 };

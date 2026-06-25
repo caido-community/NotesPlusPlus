@@ -31,7 +31,8 @@ import { ArrowKeysFix } from "./extensions/arrows-fix";
 import { MarkdownHeading } from "./extensions/markdown-heading";
 import MarkdownStyling from "./extensions/markdown-styling";
 import { createFileMention } from "./extensions/mentions/mention-file";
-import { createSessionMention } from "./extensions/mentions/mention-request";
+import { createSavedItemMention } from "./extensions/mentions/mention-saved-item";
+import { createSessionTriggerMention } from "./extensions/mentions/mention-session-trigger";
 import createSuggestion from "./extensions/mentions/suggestion";
 import { ReminderNode } from "./extensions/reminder-node";
 import { Search } from "./extensions/search";
@@ -52,8 +53,9 @@ const notesStore = useNotesStore();
 const contextMenuStore = useContextMenuStore();
 const remindersStore = useRemindersStore();
 const suggestion = createSuggestion(sdk);
-const SessionMention = createSessionMention(sdk);
+const SessionTriggerMention = createSessionTriggerMention(sdk);
 const FileMention = createFileMention(sdk);
+const SavedItemMention = createSavedItemMention(sdk);
 
 const MAX_IMAGE_SIZE_MB = 30;
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
@@ -170,7 +172,7 @@ const editor = useEditor({
     }),
     MarkdownHeading,
     // @ts-expect-error - TipTap expects null for clientRect but we can't do it due to eslint rules
-    SessionMention.configure({ suggestion }),
+    SessionTriggerMention.configure({ suggestion }),
     MarkdownStyling,
     Search.configure({
       searchResultClass: "search-result",
@@ -194,6 +196,7 @@ const editor = useEditor({
     TableHeader,
     TableCell,
     FileMention,
+    SavedItemMention,
     ReminderNode,
     SlashCommands.configure({ sdk }),
   ],

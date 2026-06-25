@@ -1,15 +1,20 @@
-import type { Folder, Note, NoteContentItem, NoteModalSaveData } from "shared";
+import type {
+  Folder,
+  Note,
+  NoteContent,
+  NoteContentItem,
+  NoteModalSaveData,
+} from "shared";
 import { computed, ref, watch } from "vue";
 
 import { useDraggable } from "@/composables/useDraggable";
 import { useSDK } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
 import type { ModalPosition } from "@/types";
-import { currentReplayTabData } from "@/utils/caido";
+import { isOnReplayPage } from "@/utils/currentRoute";
 import {
-  addParagraphToContent,
-  createMention,
-  createNoteContentWithText,
+  addBlockToContent,
+  createSavedItemMention,
   createTextParagraph,
 } from "@/utils/noteUtils";
 
@@ -26,7 +31,7 @@ export function useNoteModal(options: NoteModalOptions = {}) {
   const attachContext = ref(true);
   const selectedNotePath = ref("");
   const textarea = ref<HTMLTextAreaElement | undefined>(undefined);
-  const isReplayPage = computed(() => window.location.hash === "#/replay");
+  const isReplayPage = computed(() => isOnReplayPage());
 
   const { position, size, startDrag, startResize } = useDraggable({
     initialPosition: options.initialPosition,
@@ -58,27 +63,68 @@ export function useNoteModal(options: NoteModalOptions = {}) {
     options.onClose?.();
   }
 
+  /**
+   * If a Replay session is currently open, saves a static snapshot of its
+   * active entry's request (same mechanism as "Save Request to Note"),
+   * capturing the session ID/name for later match-or-reopen.
+   *
+   * Returns undefined if there's no active session/entry/request to save,
+   * or if saving fails — callers fall back to plain text in that case.
+   */
+  async function trySaveCurrentReplayRequest(): Promise<
+    { savedItemId: string; sessionLabel: string } | undefined
+  > {
+    const currentSession = sdk.replay.getCurrentSession();
+    if (!currentSession) return undefined;
+
+    const sessionResponse = await sdk.graphql.replaySessionEntries({
+      id: currentSession.id,
+    });
+    const activeEntryId = sessionResponse?.replaySession?.activeEntry?.id;
+    if (!activeEntryId) return undefined;
+
+    const entry = sdk.replay.getEntry(activeEntryId);
+    if (!entry.requestId) return undefined;
+
+    const result = await sdk.backend.saveRequest(
+      entry.requestId,
+      "replay",
+      undefined,
+      currentSession.id,
+      currentSession.name,
+    );
+    if (result.kind === "Error") return undefined;
+
+    return { savedItemId: result.value.id, sessionLabel: currentSession.name };
+  }
+
   async function save() {
     if (!noteContent.value.trim()) {
       close();
       return;
     }
 
-    let paragraph = createTextParagraph(noteContent.value);
+    // The text is always its own paragraph. The saved item, if any, is a
+    // separate sibling block — `savedItemMention` is `group: "block"`, so
+    // nesting it inside the paragraph's content (alongside the text
+    // nodes) produces an invalid document that ProseMirror silently
+    // drops or "repairs" rather than erroring on.
+    const blocks: NoteContentItem[] = [createTextParagraph(noteContent.value)];
 
     if (attachContext.value && isReplayPage.value) {
-      const tabData = currentReplayTabData();
-      if (tabData.id) {
-        const contentItems: NoteContentItem[] = [
-          { type: "text", text: noteContent.value },
-          { type: "text", text: "\n" },
-          createMention(tabData.id, tabData.label || tabData.id),
-        ];
-
-        paragraph = {
-          type: "paragraph",
-          content: contentItems,
-        };
+      try {
+        const saved = await trySaveCurrentReplayRequest();
+        if (saved) {
+          blocks.push(
+            createSavedItemMention(saved.savedItemId, saved.sessionLabel),
+          );
+        } else {
+          sdk.window.showToast("No active replay session found", {
+            variant: "warning",
+          });
+        }
+      } catch (err) {
+        console.error("Error saving replay request to note:", err);
       }
     }
 
@@ -88,10 +134,10 @@ export function useNoteModal(options: NoteModalOptions = {}) {
       await notesStore.loadNote(selectedNotePath.value);
 
       if (notesStore.currentNote) {
-        const updatedContent = addParagraphToContent(
-          notesStore.currentNote.content,
-          paragraph,
-        );
+        let updatedContent = notesStore.currentNote.content;
+        for (const block of blocks) {
+          updatedContent = addBlockToContent(updatedContent, block);
+        }
 
         notesStore.selectNote(selectedNotePath.value);
         await notesStore.updateNoteContent(
@@ -103,7 +149,7 @@ export function useNoteModal(options: NoteModalOptions = {}) {
       }
     } else {
       const rootPath = "/";
-      const noteData = createNoteContentWithText(noteContent.value);
+      const noteData: NoteContent = { type: "doc", content: blocks };
 
       const newNote = await notesStore.createNote(
         rootPath,
