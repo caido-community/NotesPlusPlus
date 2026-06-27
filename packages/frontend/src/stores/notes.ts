@@ -3,6 +3,7 @@ import {
   type Folder,
   type Note,
   type NoteContent,
+  type NoteContentItem,
   type TreeNode,
 } from "shared";
 import { computed, ref } from "vue";
@@ -521,6 +522,30 @@ export const useNotesStore = defineStore("notes", () => {
   }
 
   /**
+   * Append a single block to a note. The read-and-write happens on the
+   * backend in one step, so concurrent appends to the same note (e.g.
+   * saving several selected requests in one action) can't overwrite
+   * each other.
+   */
+  async function appendBlockToNote(path: string, block: NoteContentItem) {
+    try {
+      const updated = await repository.appendToNote(path, block);
+      if (currentNotePath.value === path) {
+        const node = findNode(path);
+        if (node && node.type === "note") {
+          node.content = updated.content;
+        }
+      }
+      return updated;
+    } catch (error) {
+      sdk.window.showToast(`Error appending to note: ${error}`, {
+        variant: "error",
+      });
+      return false;
+    }
+  }
+
+  /**
    * Delete a folder by path
    */
   async function deleteFolder(path: string) {
@@ -586,6 +611,7 @@ export const useNotesStore = defineStore("notes", () => {
     selectNote,
     searchNotes,
     updateNoteContent,
+    appendBlockToNote,
     goBack,
     goForward,
     canGoBack,

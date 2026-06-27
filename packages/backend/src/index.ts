@@ -1,6 +1,7 @@
 import type { DefineAPI, SDK } from "caido:plugin";
 
 import {
+  appendToNote,
   createFolder,
   createNote,
   createReminder,
@@ -32,6 +33,7 @@ export type API = DefineAPI<{
   getNote: typeof getNote;
   createNote: typeof createNote;
   updateNote: typeof updateNote;
+  appendToNote: typeof appendToNote;
   deleteNote: typeof deleteNote;
   createFolder: typeof createFolder;
   deleteFolder: typeof deleteFolder;
@@ -53,6 +55,7 @@ export function init(sdk: SDK<API, BackendEvents>) {
   sdk.api.register("getNote", getNote);
   sdk.api.register("createNote", createNote);
   sdk.api.register("updateNote", updateNote);
+  sdk.api.register("appendToNote", appendToNote);
   sdk.api.register("deleteNote", deleteNote);
   sdk.api.register("createFolder", createFolder);
   sdk.api.register("deleteFolder", deleteFolder);

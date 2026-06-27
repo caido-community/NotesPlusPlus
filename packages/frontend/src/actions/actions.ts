@@ -8,7 +8,6 @@ import { SDKPlugin } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
 import type { FrontendSDK } from "@/types";
 import {
-  addBlockToContent,
   addParagraphToContent,
   createSavedItemMention,
   createTextParagraph,
@@ -17,13 +16,14 @@ import {
 /**
  * Adds a saved-item mention (request or response) to the currently open
  * note, sharing the "no note open" guard and success toast across the
- * save-to-note actions below. `item` is a complete `SavedItem`, written
- * directly into the note's JSON content.
+ * save-to-note actions below. `item` is a complete `SavedItem`, appended
+ * directly into the note's JSON content on the backend.
  */
 const addSavedItemToNote = async (sdk: FrontendSDK, item: SavedItem) => {
   const notesStore = useNotesStore();
+  const notePath = notesStore.currentNotePath;
 
-  if (!notesStore.currentNotePath) {
+  if (!notePath) {
     sdk.window.showToast(
       "No note is currently open. Please open a note first.",
       { variant: "warning" },
@@ -31,27 +31,19 @@ const addSavedItemToNote = async (sdk: FrontendSDK, item: SavedItem) => {
     return;
   }
 
-  await notesStore.loadNote(notesStore.currentNotePath);
-
-  if (!notesStore.currentNote) {
-    return;
-  }
-
-  const updatedContent = addBlockToContent(
-    notesStore.currentNote.content,
+  const result = await notesStore.appendBlockToNote(
+    notePath,
     createSavedItemMention(item),
   );
 
-  await notesStore.updateNoteContent(
-    notesStore.currentNotePath,
-    updatedContent,
-  );
+  if (!result) {
+    return;
+  }
 
   const successNoun = item.kind === "response" ? "Response" : "Request";
-  sdk.window.showToast(
-    `${successNoun} added to note ${notesStore.currentNotePath}`,
-    { variant: "success" },
-  );
+  sdk.window.showToast(`${successNoun} added to note ${notePath}`, {
+    variant: "success",
+  });
 
   await notesStore.refreshTree();
 };

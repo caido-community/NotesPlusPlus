@@ -16,6 +16,11 @@ export const updateNoteSchema = z.object({
   updates: z.object({}).passthrough(),
 });
 
+export const appendToNoteSchema = z.object({
+  path: z.string().min(1),
+  block: z.object({}).passthrough(),
+});
+
 export const deleteNoteSchema = z.object({
   path: z.string().min(1),
 });

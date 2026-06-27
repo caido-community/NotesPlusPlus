@@ -2,10 +2,11 @@ import * as fs from "fs";
 import path from "path";
 
 import type { SDK } from "caido:plugin";
-import type { Folder, Note, NoteContent, Result, TreeNode } from "shared";
+import type { Folder, Note, NoteContent, NoteContentItem, Result, TreeNode } from "shared";
 import { error, ok } from "shared";
 
 import {
+  appendToNoteSchema,
   createNoteSchema,
   deleteNoteSchema,
   getNoteSchema,
@@ -201,6 +202,61 @@ export async function updateNote(
     });
   } catch (err) {
     sdk.console.error(`Error updating note: ${err}`);
+    return error(err instanceof Error ? err.message : String(err));
+  }
+}
+
+/**
+ * Appends a single block to a note's content. Reads the file fresh and
+ * appends to that, in one step — so two separate appends to the same
+ * note can't overwrite each other, regardless of what either caller had
+ * cached beforehand.
+ */
+export async function appendToNote(
+  sdk: SDK,
+  notePath: string,
+  block: NoteContentItem,
+): Promise<Result<Note>> {
+  try {
+    appendToNoteSchema.parse({ path: notePath, block });
+
+    const projectIDResult = await ensureProjectDirectory(sdk);
+    if (projectIDResult.kind === "Error") {
+      return error(projectIDResult.error);
+    }
+
+    const projectID = projectIDResult.value;
+    const pathWithExtension = ensureJsonExtension(notePath);
+    const rootPath = getNoteRootPath(projectID);
+    const fullPath = path.join(rootPath, pathWithExtension);
+
+    if (!fileExists(fullPath)) {
+      return error(`Note not found at path: ${notePath}`);
+    }
+
+    const existingContent = readFile(fullPath);
+    const updatedContent: NoteContent = {
+      ...existingContent,
+      content: [...(existingContent.content || []), block],
+    };
+
+    writeFile(fullPath, updatedContent);
+
+    const stats = fs.statSync(fullPath);
+    const name = getNameFromPath(notePath);
+
+    return ok({
+      path: pathWithExtension,
+      name,
+      type: "note",
+      content: updatedContent,
+      metadata: {
+        createdAt: stats.birthtime,
+        modifiedAt: stats.mtime,
+      },
+    });
+  } catch (err) {
+    sdk.console.error(`Error appending to note: ${err}`);
     return error(err instanceof Error ? err.message : String(err));
   }
 }

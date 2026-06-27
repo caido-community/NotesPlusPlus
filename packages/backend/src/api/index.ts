@@ -2,6 +2,7 @@ import { getFileContent } from "./file";
 import { createFolder, deleteFolder } from "./folder";
 import { getLegacyNotes, migrateNote } from "./migration";
 import {
+  appendToNote,
   createNote,
   deleteNote,
   getNote,
@@ -24,6 +25,7 @@ export {
   getNote,
   createNote,
   updateNote,
+  appendToNote,
   deleteNote,
   createFolder,
   deleteFolder,
