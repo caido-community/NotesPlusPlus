@@ -62,35 +62,26 @@ export type SavedItemKind = "request" | "response";
 export type SavedItemSourceKind = "history" | "replay" | "draft";
 
 /**
- * A reference to a request or response that has been saved into a note.
+ * A reference to a request or response saved into a note. This is the
+ * literal shape stored as the `savedItemMention` node's `attrs` inside
+ * the note's own JSON document — there is no separate record or lookup
+ * table.
  *
- * For "history" and "replay" items, we only ever store the ID — the raw
- * HTTP content is always fetched live from Caido so it can never go
- * stale or get duplicated on disk. `refId` is that ID.
+ * For "history" and "replay" items, only the ID (`refId`) is stored —
+ * the raw HTTP content is always fetched live from Caido. For "draft"
+ * items (an unsent Replay request, no Request.id yet), `refId` is
+ * unused and `draftRaw`/`draftHost`/`draftPort`/`draftIsTls` carry the
+ * data directly.
  *
- * For "draft" items (an unsent Replay request), there is no Request.id
- * to point to — Caido has never created a row for it — so the raw text
- * and connection info are stored directly instead. `refId` is unused for
- * drafts; `draftRaw`/`draftHost`/`draftPort`/`draftIsTls` carry the data.
+ * `parentRequestId` is only set when `kind === "response"`, since a
+ * Response doesn't expose a path back to its request.
  *
- * `parentRequestId` is only set when `kind === "response"` — it's the ID
- * of the request that response belongs to, captured at save-time, since
- * a Response itself doesn't expose a path back to its request and we
- * need it to support double-click-to-replay from a saved response.
- *
- * `replaySessionId` / `sessionLabel` are only set when saved from a Replay
- * request pane. For a sent request, `refId` (the underlying `Request.id`)
- * is always the permanent, immutable snapshot — what's actually rendered
- * in the note never changes even if the Replay session is later edited.
- * The session fields exist purely so double-click can *prefer* reopening
- * the original live session when it still represents the same request
- * (see `sessionLabel` matching in ResolvedSavedItem), falling back to a
- * fresh session seeded from the static snapshot otherwise. For a draft,
- * only `replaySessionId` is set (there's no separate static/live
- * distinction to reconcile by name — the session IS the draft).
+ * `replaySessionId` / `sessionLabel` are only set when saved from a
+ * Replay pane: they let double-click prefer reopening the original live
+ * session (if it still has the same name) instead of creating a fresh
+ * one from the static snapshot.
  */
 export interface SavedItem {
-  id: string;
   kind: SavedItemKind;
   refId: string;
   parentRequestId?: string;
@@ -102,26 +93,17 @@ export interface SavedItem {
   draftPort?: number;
   draftIsTls?: boolean;
   label?: string;
-  projectId: string;
-  createdAt: string;
 }
 
 /**
  * The live content resolved for a SavedItem, fetched fresh from Caido
- * (for "history"/"replay" items) or read directly from storage (for
- * "draft" items, which were never sent and have nothing to re-fetch).
- * `found: false` means the original request/response no longer exists
- * (e.g. the project history was cleared) — this never happens for
- * drafts, since their content is stored directly.
+ * (for "history"/"replay" items) or read from the note's own attrs (for
+ * "draft" items). `found: false` means the original request/response no
+ * longer exists.
  *
- * `requestId` is the ID of the *request* to seed a new Replay session
- * from via `{type: "ID", id}` — set for "history"/"replay" items, absent
- * for "draft" items, which instead use `draftConnection` with
- * `{type: "Raw", raw, connectionInfo}`.
- *
- * `replaySessionId` / `sessionLabel` are passed through as captured at
- * save-time (see `SavedItem`), for the frontend to compare against the
- * session's *current* name before deciding whether to reopen it.
+ * `requestId` seeds a new Replay session via `{type: "ID", id}` for
+ * "history"/"replay" items; `draftConnection` does the same via
+ * `{type: "Raw", raw, connectionInfo}` for "draft" items.
  */
 export type ResolvedSavedItem =
   | {

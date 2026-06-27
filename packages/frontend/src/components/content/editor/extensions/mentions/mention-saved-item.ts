@@ -1,4 +1,5 @@
 import { mergeAttributes, Node } from "@tiptap/core";
+import type { SavedItem } from "shared";
 
 import { type FrontendSDK } from "@/types";
 import { emitter } from "@/utils/eventBus";
@@ -59,9 +60,8 @@ if (!document.getElementById(styleId)) {
     .embedded-saved-item-content .cm-scroller {
       overflow: auto;
     }
-    /* This is Caido's real native editor, not a read-only widget — the
-       overlay below blocks typing/pasting while still letting clicks
-       through so double-click-to-replay and text selection both work. */
+    /* Real native editor, not read-only — overlay below blocks typing
+       while still letting dblclick and selection through. */
     .embedded-saved-item-overlay {
       position: absolute;
       inset: 0;
@@ -93,12 +93,10 @@ function kindLabel(kind: string): string {
 }
 
 /**
- * Replay sessions are named with a plain incrementing number by default
- * (e.g. "1", "2", "3"), and `typeof "1" === "string"` — so checking the
- * type alone isn't enough to tell a real, user-given label apart from an
- * unrenamed default. This requires at least one non-numeric character,
- * after trimming, before treating a label as meaningful enough to match
- * against.
+ * Replay sessions default to a plain incrementing number as their name
+ * (e.g. "1", "2") — this treats a label as meaningful only if it has at
+ * least one non-numeric character, to tell a real label apart from an
+ * unrenamed default.
  */
 function isMeaningfulSessionLabel(value: unknown): value is string {
   if (typeof value !== "string") return false;
@@ -112,20 +110,13 @@ function isMeaningfulSessionLabel(value: unknown): value is string {
  * Search, HTTP History, Sitemap, or a Replay pane.
  *
  * Renders using Caido's own `sdk.ui.httpRequestEditor()` /
- * `httpResponseEditor()` — the same native, syntax-highlighted component
- * Caido itself uses in Replay — rather than a generic CodeMirror instance.
- * That editor has no built-in read-only flag, so a transparent overlay
- * absorbs clicks instead of letting them reach the editor: this blocks
- * typing while still allowing double-click, since nothing in this note is
- * ever read back out of the editor or saved.
+ * `httpResponseEditor()`, with a transparent overlay absorbing clicks
+ * since that editor has no read-only flag.
  *
- * What's *displayed* is always the static, immutable request snapshot
- * (the underlying `Request.id`, captured at save time) — it never changes
- * even if the request is later edited in Replay. Double-click is where
- * the two paths diverge: if this was saved from a Replay pane and that
- * same live session still exists with the same name, double-click reopens
- * it directly (picking up any edits since); otherwise it creates a fresh
- * Replay session seeded from the static snapshot instead.
+ * The displayed content is always the static snapshot captured at save
+ * time. Double-click reopens the original live Replay session if it
+ * still exists with the same name, otherwise it creates a fresh session
+ * seeded from the snapshot.
  */
 export const createSavedItemMention = (sdk: FrontendSDK) => {
   return Node.create({
@@ -135,7 +126,16 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
 
     addAttributes() {
       return {
-        id: { default: "" },
+        kind: { default: "request" },
+        refId: { default: "" },
+        parentRequestId: { default: undefined },
+        sourceKind: { default: "history" },
+        replaySessionId: { default: undefined },
+        sessionLabel: { default: undefined },
+        draftRaw: { default: undefined },
+        draftHost: { default: undefined },
+        draftPort: { default: undefined },
+        draftIsTls: { default: undefined },
         label: { default: "" },
       };
     },
@@ -153,7 +153,8 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
 
     addNodeView() {
       return (node) => {
-        const { id, label } = node.node.attrs;
+        const item = node.node.attrs as SavedItem;
+        const { label } = item;
 
         const container = document.createElement("div");
         container.className = "embedded-saved-item";
@@ -168,32 +169,25 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
         contentWrapper.className = "embedded-saved-item-content";
         container.appendChild(contentWrapper);
 
-        // Absorbs clicks so the underlying native editor never receives
-        // focus/keystrokes, while a "dblclick" still bubbles up from it
-        // to trigger the replay handler below.
+        // Absorbs clicks so the native editor never receives focus, while
+        // dblclick still bubbles up to the replay handler below.
         const overlay = document.createElement("div");
         overlay.className = "embedded-saved-item-overlay";
         container.appendChild(overlay);
 
         // Tracks what double-click should do: replay an existing,
         // already-sent request by ID, or recreate an unsent draft from
-        // its raw text + connection info. Exactly one of these is set
-        // once the saved item resolves successfully (or neither, if the
-        // underlying request/response is missing) — that's what
-        // distinguishes "no longer available" from "nothing to do yet".
+        // its raw text + connection info.
         let replayRequestId: string | undefined;
         let draftConnection:
           | { host: string; port: number; isTls: boolean }
           | undefined;
-        // The decoded raw text currently shown, reused for the "Raw"
-        // session-creation fallback so double-click never needs to
-        // re-fetch — this is exactly what's already on screen.
+        // Reused for the "Raw" session-creation fallback so double-click
+        // never needs to re-fetch.
         let currentRawText: string | undefined;
 
-        // Only set for requests saved from a Replay pane. If the live
-        // session still exists AND its current name still matches what it
-        // was at save time, double-click reopens that session directly
-        // instead of starting a fresh one from the static snapshot.
+        // Only set for requests saved from a Replay pane, used to prefer
+        // reopening the live session if it still matches.
         let savedReplaySessionId: string | undefined;
         let savedSessionLabel: string | undefined;
 
@@ -204,9 +198,9 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
           </div>`;
         };
 
-        const loadSavedItem = async (savedItemId: string): Promise<void> => {
+        const loadSavedItem = async (savedItem: SavedItem): Promise<void> => {
           try {
-            const result = await sdk.backend.getSavedItem(savedItemId);
+            const result = await sdk.backend.getSavedItem(savedItem);
 
             if (result.kind === "Error") {
               labelEl.textContent = "Unavailable";
@@ -227,10 +221,8 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
             savedReplaySessionId = resolved.replaySessionId;
             savedSessionLabel = resolved.sessionLabel;
 
-            // Drafts are stored as plain text (straight from the SDK's
-            // RequestDraft.raw, never passed through GraphQL) — only
-            // "history"/"replay" items go through GraphQL's `Blob`
-            // scalar and actually need Base64 decoding.
+            // Drafts are plain text (never passed through GraphQL); only
+            // "history"/"replay" items need Base64 decoding.
             currentRawText =
               resolved.sourceKind === "draft"
                 ? resolved.raw
@@ -257,10 +249,10 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
           }
         };
 
-        loadSavedItem(id);
+        loadSavedItem(item);
 
         emitter.on("refreshEditors", () => {
-          loadSavedItem(id);
+          loadSavedItem(item);
         });
 
         overlay.addEventListener("dblclick", async () => {
@@ -271,10 +263,7 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
             return;
           }
 
-          // For a draft, the session IS the draft — there's no separate
-          // static snapshot it could have diverged from, so reopening it
-          // by ID alone (no name match needed) is always correct as long
-          // as the session still exists.
+          // For a draft, the session IS the draft — reopen by ID alone.
           if (draftConnection && savedReplaySessionId && isMeaningfulSessionLabel(savedSessionLabel)) {
             const existingDraftSession = sdk.replay
               .getSessions()
@@ -287,15 +276,9 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
             }
           }
 
-          // Prefer reopening the original live session, but only if it
-          // still exists AND its current name is a real, meaningful label
-          // (not just an unrenamed default like "1" or "2") that still
-          // matches what was captured at save time — that's our signal
-          // the session still represents "the same" request, even if its
-          // content has since been edited in Replay. If the session was
-          // deleted, renamed, or never had a real name to begin with, we
-          // fall back to a fresh session seeded from the static snapshot
-          // instead, since the live one may no longer be trustworthy.
+          // Reopen the original live session if it still exists and its
+          // current name still matches what was captured at save time.
+          // Otherwise fall back to a fresh session below.
           if (
             savedReplaySessionId &&
             isMeaningfulSessionLabel(savedSessionLabel)
@@ -315,13 +298,9 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
             }
           }
 
-          // Fallback: create a fresh Replay session from the static,
-          // immutable snapshot — either a sent request (by ID) or an
-          // unsent draft (by raw text + connection info, since it never
-          // had an ID to begin with). createSession() only returns
-          // Promise<void> — the created session is delivered via the
-          // onSessionCreate event instead, so we listen for it before
-          // triggering creation.
+          // Create a fresh Replay session from the static snapshot.
+          // createSession() returns void; the created session arrives
+          // via onSessionCreate instead.
           try {
             const handler = sdk.replay.onSessionCreate((event) => {
               handler.stop();

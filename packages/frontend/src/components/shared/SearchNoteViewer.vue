@@ -5,6 +5,7 @@ import { Table } from "@tiptap/extension-table";
 import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TableRow } from "@tiptap/extension-table-row";
+import { PluginKey } from "@tiptap/pm/state";
 import { StarterKit } from "@tiptap/starter-kit";
 import { type Editor, EditorContent, useEditor } from "@tiptap/vue-3";
 import { useDebounceFn } from "@vueuse/core";
@@ -14,6 +15,7 @@ import { onUnmounted, toRaw, watch } from "vue";
 import { MarkdownHeading } from "@/components/content/editor/extensions/markdown-heading";
 import MarkdownStyling from "@/components/content/editor/extensions/markdown-styling";
 import { createFileMention } from "@/components/content/editor/extensions/mentions/mention-file";
+import { createSessionMention } from "@/components/content/editor/extensions/mentions/mention-request";
 import { createSavedItemMention } from "@/components/content/editor/extensions/mentions/mention-saved-item";
 import { createSessionTriggerMention } from "@/components/content/editor/extensions/mentions/mention-session-trigger";
 import createSuggestion from "@/components/content/editor/extensions/mentions/suggestion";
@@ -25,9 +27,13 @@ injectEditorStyles();
 
 const sdk = useSDK();
 const suggestion = createSuggestion(sdk);
+// See the comment at SessionTriggerMention.configure() below for why
+// this needs to be explicit and unique.
+const sessionTriggerPluginKey = new PluginKey("sessionTriggerSuggestion");
 const SessionTriggerMention = createSessionTriggerMention(sdk);
 const FileMention = createFileMention(sdk);
 const SavedItemMention = createSavedItemMention(sdk);
+const SessionMention = createSessionMention(sdk);
 
 const props = defineProps<{
   content: NoteContent;
@@ -49,10 +55,17 @@ const editor = useEditor({
     StarterKit.configure({ heading: false }),
     MarkdownHeading,
     // @ts-expect-error - TipTap expects null for clientRect but we can't do it due to eslint rules
-    SessionTriggerMention.configure({ suggestion }),
+    SessionTriggerMention.configure({
+      // See the comment on this same call in NoteEditor.vue: each
+      // Mention.extend() instance otherwise defaults to a shared
+      // suggestion plugin key, which collides once SessionMention
+      // (mention-request.ts) is registered alongside this one.
+      suggestion: { ...suggestion, pluginKey: sessionTriggerPluginKey },
+    }),
     MarkdownStyling,
     FileMention,
     SavedItemMention,
+    SessionMention,
     Placeholder.configure({ placeholder: "Empty note..." }),
     ImageExtension.configure({
       HTMLAttributes: { class: "caido-image" },

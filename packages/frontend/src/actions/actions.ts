@@ -1,4 +1,5 @@
 import type { CommandContext } from "@caido/sdk-frontend";
+import type { SavedItem } from "shared";
 import { createApp, h } from "vue";
 
 import NoteFloatModal from "@/components/shared/NoteFloatModal.vue";
@@ -14,16 +15,12 @@ import {
 } from "@/utils/noteUtils";
 
 /**
- * Adds a single saved-item mention (request or response) to the
- * currently open note, sharing the "no note open" guard and
- * success/error toasts across all the save-to-note actions below.
+ * Adds a saved-item mention (request or response) to the currently open
+ * note, sharing the "no note open" guard and success toast across the
+ * save-to-note actions below. `item` is a complete `SavedItem`, written
+ * directly into the note's JSON content.
  */
-const addSavedItemToNote = async (
-  sdk: FrontendSDK,
-  savedItemId: string,
-  label: string | undefined,
-  successNoun: string,
-) => {
+const addSavedItemToNote = async (sdk: FrontendSDK, item: SavedItem) => {
   const notesStore = useNotesStore();
 
   if (!notesStore.currentNotePath) {
@@ -42,7 +39,7 @@ const addSavedItemToNote = async (
 
   const updatedContent = addBlockToContent(
     notesStore.currentNote.content,
-    createSavedItemMention(savedItemId, label),
+    createSavedItemMention(item),
   );
 
   await notesStore.updateNoteContent(
@@ -50,6 +47,7 @@ const addSavedItemToNote = async (
     updatedContent,
   );
 
+  const successNoun = item.kind === "response" ? "Response" : "Request";
   sdk.window.showToast(
     `${successNoun} added to note ${notesStore.currentNotePath}`,
     { variant: "success" },
@@ -193,77 +191,46 @@ export const saveRequestToNote = async (
       }
 
       for (const req of ctx.requests) {
-        const result = await sdk.backend.saveRequest(req.id, "history");
-        if (result.kind === "Error") {
-          sdk.window.showToast(`Error saving request: ${result.error}`, {
-            variant: "error",
-          });
-          continue;
-        }
-
-        await addSavedItemToNote(sdk, result.value.id, req.path, "Request");
+        await addSavedItemToNote(sdk, {
+          kind: "request",
+          refId: req.id,
+          sourceKind: "history",
+          label: req.path,
+        });
       }
       return;
     }
 
     if (ctx.type === "RequestContext") {
-      // Capture the session this request currently lives in. Used below
-      // either way: for a sent request, also captures the session's name
-      // *right now* so double-click can later check whether it still
-      // represents the same request before reopening it; for a draft,
-      // there's no separate static/live distinction to reconcile by name
-      // — the session IS the draft, so only the ID is needed.
+      // Captured so double-click can later check whether the live
+      // session still represents this request before reopening it.
       const currentSession = sdk.replay.getCurrentSession();
 
       if (ctx.request.type !== "RequestFull") {
-        // An unsent draft has no Request.id yet — Caido has never
-        // created a row for it — but it does have raw text and
-        // connection info right here, which is enough to save a static
-        // snapshot directly instead of a reference to re-fetch later.
-        const result = await sdk.backend.saveDraftRequest(
-          ctx.request.raw,
-          ctx.request.host,
-          ctx.request.port,
-          ctx.request.isTls,
-          undefined,
-          currentSession?.id,
-        );
-        if (result.kind === "Error") {
-          sdk.window.showToast(`Error saving request: ${result.error}`, {
-            variant: "error",
-          });
-          return;
-        }
-
-        await addSavedItemToNote(
-          sdk,
-          result.value.id,
-          ctx.request.path,
-          "Request",
-        );
-        return;
-      }
-
-      const result = await sdk.backend.saveRequest(
-        ctx.request.id,
-        "replay",
-        undefined,
-        currentSession?.id,
-        currentSession?.name,
-      );
-      if (result.kind === "Error") {
-        sdk.window.showToast(`Error saving request: ${result.error}`, {
-          variant: "error",
+        // An unsent draft has no Request.id yet, but has raw text and
+        // connection info, which is enough to save a static snapshot.
+        await addSavedItemToNote(sdk, {
+          kind: "request",
+          refId: "",
+          sourceKind: "draft",
+          draftRaw: ctx.request.raw,
+          draftHost: ctx.request.host,
+          draftPort: ctx.request.port,
+          draftIsTls: ctx.request.isTls,
+          replaySessionId: currentSession?.id,
+          label: ctx.request.path,
         });
         return;
       }
 
-      await addSavedItemToNote(
-        sdk,
-        result.value.id,
-        ctx.request.path,
-        "Request",
-      );
+      await addSavedItemToNote(sdk, {
+        kind: "request",
+        refId: ctx.request.id,
+        sourceKind: "replay",
+        replaySessionId: currentSession?.id,
+        sessionLabel: currentSession?.name,
+        label: ctx.request.path,
+      });
       return;
     }
 
@@ -296,25 +263,13 @@ export const saveResponseToNote = async (
       return;
     }
 
-    const result = await sdk.backend.saveResponse(
-      ctx.response.id,
-      ctx.request.id,
-      "history",
-    );
-
-    if (result.kind === "Error") {
-      sdk.window.showToast(`Error saving response: ${result.error}`, {
-        variant: "error",
-      });
-      return;
-    }
-
-    await addSavedItemToNote(
-      sdk,
-      result.value.id,
-      ctx.request.path,
-      "Response",
-    );
+    await addSavedItemToNote(sdk, {
+      kind: "response",
+      refId: ctx.response.id,
+      parentRequestId: ctx.request.id,
+      sourceKind: "history",
+      label: ctx.request.path,
+    });
   } catch (error) {
     sdk.window.showToast(`Error saving response to note: ${error}`, {
       variant: "error",

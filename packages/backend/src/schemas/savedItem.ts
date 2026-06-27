@@ -12,43 +12,25 @@ import { z } from "zod";
  */
 export const savedItemSourceKindSchema = z.enum(["history", "replay", "draft"]);
 
-export const saveRequestSchema = z.object({
-  requestId: z.string().min(1),
-  sourceKind: savedItemSourceKindSchema,
-  // .nullable() in addition to .optional(): when an earlier positional arg
-  // is skipped with `undefined` but a later one is still passed, the RPC
-  // bridge serializes that `undefined` as JSON `null` (since arrays can't
-  // have holes) — so these fields can arrive as `null`, not just absent.
-  label: z.string().optional().nullable(),
-  replaySessionId: z.string().min(1).optional().nullable(),
-  sessionLabel: z.string().optional().nullable(),
-});
-
 /**
- * Saving an unsent Replay draft: there's no Request.id yet, so the raw
- * HTTP text and connection info are stored directly instead of a
- * reference to re-fetch later.
+ * Validates a `SavedItem` as it comes back out of a note's own JSON
+ * content — the note file is user-editable on disk, so these attrs are
+ * untrusted input.
  */
-export const saveDraftRequestSchema = z.object({
-  raw: z.string().min(1),
-  host: z.string().min(1),
-  port: z.number().int().min(1).max(65535),
-  isTls: z.boolean(),
-  label: z.string().optional().nullable(),
-  replaySessionId: z.string().min(1).optional().nullable(),
-});
-
-export const saveResponseSchema = z.object({
-  responseId: z.string().min(1),
-  requestId: z.string().min(1),
+export const savedItemSchema = z.object({
+  kind: z.enum(["request", "response"]),
+  refId: z.string(),
+  parentRequestId: z.string().optional(),
   sourceKind: savedItemSourceKindSchema,
-  label: z.string().optional().nullable(),
+  replaySessionId: z.string().optional(),
+  sessionLabel: z.string().optional(),
+  draftRaw: z.string().optional(),
+  draftHost: z.string().optional(),
+  draftPort: z.number().int().min(1).max(65535).optional(),
+  draftIsTls: z.boolean().optional(),
+  label: z.string().optional(),
 });
 
 export const getSavedItemSchema = z.object({
-  id: z.string().min(1),
-});
-
-export const deleteSavedItemSchema = z.object({
-  id: z.string().min(1),
+  item: savedItemSchema,
 });

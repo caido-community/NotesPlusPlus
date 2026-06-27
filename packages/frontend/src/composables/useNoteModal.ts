@@ -4,6 +4,7 @@ import type {
   NoteContent,
   NoteContentItem,
   NoteModalSaveData,
+  SavedItem,
 } from "shared";
 import { computed, ref, watch } from "vue";
 
@@ -64,15 +65,15 @@ export function useNoteModal(options: NoteModalOptions = {}) {
   }
 
   /**
-   * If a Replay session is currently open, saves a static snapshot of its
-   * active entry's request (same mechanism as "Save Request to Note"),
-   * capturing the session ID/name for later match-or-reopen.
+   * If a Replay session is currently open, builds a static snapshot of
+   * its active entry's request (same mechanism as "Save Request to
+   * Note"), capturing the session ID/name for later match-or-reopen.
    *
-   * Returns undefined if there's no active session/entry/request to save,
-   * or if saving fails — callers fall back to plain text in that case.
+   * Returns undefined if there's no active session/entry/request to
+   * save — callers fall back to plain text in that case.
    */
   async function trySaveCurrentReplayRequest(): Promise<
-    { savedItemId: string; sessionLabel: string } | undefined
+    SavedItem | undefined
   > {
     const currentSession = sdk.replay.getCurrentSession();
     if (!currentSession) return undefined;
@@ -86,16 +87,13 @@ export function useNoteModal(options: NoteModalOptions = {}) {
     const entry = sdk.replay.getEntry(activeEntryId);
     if (!entry.requestId) return undefined;
 
-    const result = await sdk.backend.saveRequest(
-      entry.requestId,
-      "replay",
-      undefined,
-      currentSession.id,
-      currentSession.name,
-    );
-    if (result.kind === "Error") return undefined;
-
-    return { savedItemId: result.value.id, sessionLabel: currentSession.name };
+    return {
+      kind: "request",
+      refId: entry.requestId,
+      sourceKind: "replay",
+      replaySessionId: currentSession.id,
+      sessionLabel: currentSession.name,
+    };
   }
 
   async function save() {
@@ -115,9 +113,7 @@ export function useNoteModal(options: NoteModalOptions = {}) {
       try {
         const saved = await trySaveCurrentReplayRequest();
         if (saved) {
-          blocks.push(
-            createSavedItemMention(saved.savedItemId, saved.sessionLabel),
-          );
+          blocks.push(createSavedItemMention(saved));
         } else {
           sdk.window.showToast("No active replay session found", {
             variant: "warning",

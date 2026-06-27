@@ -7,7 +7,6 @@ import {
   deleteFolder,
   deleteNote,
   deleteReminder,
-  deleteSavedItem,
   dismissReminder,
   getCurrentProjectId,
   getFileContent,
@@ -18,9 +17,6 @@ import {
   getTree,
   migrateNote,
   moveItem,
-  saveDraftRequest,
-  saveRequest,
-  saveResponse,
   searchNotes,
   updateNote,
 } from "./api";
@@ -49,11 +45,7 @@ export type API = DefineAPI<{
   createReminder: typeof createReminder;
   deleteReminder: typeof deleteReminder;
   dismissReminder: typeof dismissReminder;
-  saveRequest: typeof saveRequest;
-  saveResponse: typeof saveResponse;
-  saveDraftRequest: typeof saveDraftRequest;
   getSavedItem: typeof getSavedItem;
-  deleteSavedItem: typeof deleteSavedItem;
 }>;
 
 export function init(sdk: SDK<API, BackendEvents>) {
@@ -74,11 +66,7 @@ export function init(sdk: SDK<API, BackendEvents>) {
   sdk.api.register("createReminder", createReminder);
   sdk.api.register("deleteReminder", deleteReminder);
   sdk.api.register("dismissReminder", dismissReminder);
-  sdk.api.register("saveRequest", saveRequest);
-  sdk.api.register("saveResponse", saveResponse);
-  sdk.api.register("saveDraftRequest", saveDraftRequest);
   sdk.api.register("getSavedItem", getSavedItem);
-  sdk.api.register("deleteSavedItem", deleteSavedItem);
 
   sdk.events.onProjectChange((sdk, project) => {
     sdk.api.send("notes++:projectChange", project?.getId());

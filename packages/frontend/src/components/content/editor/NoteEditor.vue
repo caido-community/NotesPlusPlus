@@ -19,6 +19,7 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TableRow } from "@tiptap/extension-table-row";
 import { type Slice } from "@tiptap/pm/model";
+import { PluginKey } from "@tiptap/pm/state";
 import { type EditorView } from "@tiptap/pm/view";
 import { StarterKit } from "@tiptap/starter-kit";
 import { type Editor, EditorContent, useEditor } from "@tiptap/vue-3";
@@ -31,6 +32,7 @@ import { ArrowKeysFix } from "./extensions/arrows-fix";
 import { MarkdownHeading } from "./extensions/markdown-heading";
 import MarkdownStyling from "./extensions/markdown-styling";
 import { createFileMention } from "./extensions/mentions/mention-file";
+import { createSessionMention } from "./extensions/mentions/mention-request";
 import { createSavedItemMention } from "./extensions/mentions/mention-saved-item";
 import { createSessionTriggerMention } from "./extensions/mentions/mention-session-trigger";
 import createSuggestion from "./extensions/mentions/suggestion";
@@ -53,9 +55,13 @@ const notesStore = useNotesStore();
 const contextMenuStore = useContextMenuStore();
 const remindersStore = useRemindersStore();
 const suggestion = createSuggestion(sdk);
+// See the comment at SessionTriggerMention.configure() below for why
+// this needs to be explicit and unique.
+const sessionTriggerPluginKey = new PluginKey("sessionTriggerSuggestion");
 const SessionTriggerMention = createSessionTriggerMention(sdk);
 const FileMention = createFileMention(sdk);
 const SavedItemMention = createSavedItemMention(sdk);
+const SessionMention = createSessionMention(sdk);
 
 const MAX_IMAGE_SIZE_MB = 30;
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif"];
@@ -172,7 +178,13 @@ const editor = useEditor({
     }),
     MarkdownHeading,
     // @ts-expect-error - TipTap expects null for clientRect but we can't do it due to eslint rules
-    SessionTriggerMention.configure({ suggestion }),
+    SessionTriggerMention.configure({
+      // pluginKey must be set here (not inside addOptions in
+      // mention-session-trigger.ts) — .configure() replaces the whole
+      // suggestion object, discarding anything set there. Without a
+      // unique key this collides with SessionMention's.
+      suggestion: { ...suggestion, pluginKey: sessionTriggerPluginKey },
+    }),
     MarkdownStyling,
     Search.configure({
       searchResultClass: "search-result",
@@ -197,6 +209,7 @@ const editor = useEditor({
     TableCell,
     FileMention,
     SavedItemMention,
+    SessionMention,
     ReminderNode,
     SlashCommands.configure({ sdk }),
   ],
