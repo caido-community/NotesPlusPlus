@@ -1,4 +1,4 @@
-import { type NoteContent, type NoteContentItem } from "shared";
+import { type NoteContent, type NoteContentItem, type SavedItem } from "shared";
 
 /**
  * Creates a paragraph content item from text
@@ -32,15 +32,9 @@ export function addParagraphToContent(
 
 /**
  * Adds a block-level node (e.g. `savedItemMention`, `fileMention`)
- * directly to the document's top-level content.
- *
- * Unlike `addParagraphToContent`, this does NOT wrap the node in a
- * `paragraph` — paragraphs only accept inline content in ProseMirror's
- * default schema, so a `group: "block"` node nested inside one is an
- * invalid document. ProseMirror silently drops or "repairs" invalid
- * structure rather than erroring, which is why this previously failed
- * silently (most visibly on an empty note, where there was no existing
- * valid structure for the repair logic to fall back to).
+ * directly to the document's top-level content, without wrapping it in
+ * a paragraph — paragraphs only accept inline content, so a
+ * `group: "block"` node nested inside one is an invalid document.
  */
 export function addBlockToContent(
   currentContent: NoteContent | undefined,
@@ -58,19 +52,13 @@ export function addBlockToContent(
 }
 
 /**
- * Creates a saved request/response mention content item.
- * `id` here is the ID of the saved item record (not the Caido
- * request/response ID) — the backend resolves it to live content.
+ * Creates a saved request/response mention content item. `item` is the
+ * entire `SavedItem` — kind, refId, sourceKind, and so on — stored
+ * directly as the node's `attrs` inside the note's own JSON document.
  */
-export function createSavedItemMention(
-  id: string,
-  label?: string,
-): NoteContentItem {
+export function createSavedItemMention(item: SavedItem): NoteContentItem {
   return {
     type: "savedItemMention",
-    attrs: {
-      id,
-      label: label || "",
-    },
+    attrs: { ...item },
   };
 }
