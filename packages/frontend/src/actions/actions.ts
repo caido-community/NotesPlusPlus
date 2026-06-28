@@ -259,7 +259,7 @@ export const saveResponseToNote = async (
       kind: "response",
       refId: ctx.response.id,
       parentRequestId: ctx.request.id,
-      sourceKind: "history",
+      sourceKind: window.location.hash === "#/replay" ? "replay" : "history",
       label: ctx.request.path,
     });
   } catch (error) {

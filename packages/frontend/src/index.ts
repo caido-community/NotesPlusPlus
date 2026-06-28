@@ -17,7 +17,6 @@ import {
   showSearchModal,
 } from "@/actions/actions";
 import { mountReminderNotifications } from "@/components/shared/reminders/mountReminderNotifications";
-import { trackCurrentRoute } from "@/utils/currentRoute";
 import { emitter } from "@/utils/eventBus";
 import { convertMarkdownToTipTap } from "@/utils/markdownToJSON";
 
@@ -43,7 +42,6 @@ export const init = (sdk: FrontendSDK) => {
 
   app.mount(root);
 
-  trackCurrentRoute(sdk);
   mountReminderNotifications(sdk, pinia);
 
   sdk.commands.register("notesplusplus:floating-modal", {

@@ -12,7 +12,6 @@ import { useDraggable } from "@/composables/useDraggable";
 import { useSDK } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
 import type { ModalPosition } from "@/types";
-import { isOnReplayPage } from "@/utils/currentRoute";
 import {
   addBlockToContent,
   createSavedItemMention,
@@ -32,7 +31,7 @@ export function useNoteModal(options: NoteModalOptions = {}) {
   const attachContext = ref(true);
   const selectedNotePath = ref("");
   const textarea = ref<HTMLTextAreaElement | undefined>(undefined);
-  const isReplayPage = computed(() => isOnReplayPage());
+  const isReplayPage = computed(() => window.location.hash === "#/replay");
 
   const { position, size, startDrag, startResize } = useDraggable({
     initialPosition: options.initialPosition,
