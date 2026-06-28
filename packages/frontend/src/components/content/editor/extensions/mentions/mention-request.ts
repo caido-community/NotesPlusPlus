@@ -4,6 +4,7 @@ import type { SavedItem } from "shared";
 
 import { type FrontendSDK } from "@/types";
 import { emitter } from "@/utils/eventBus";
+import { decodeRawBlob } from "@/utils/httpEncoding";
 
 const styleId = "embedded-replay-editor-style";
 if (!document.getElementById(styleId)) {
@@ -104,7 +105,7 @@ async function resolveToSavedItem(
       kind: "request",
       refId: "",
       sourceKind: "draft",
-      draftRaw: atob(sessionResponse?.replaySession?.activeEntry?.raw ?? ""),
+      draftRaw: decodeRawBlob(sessionResponse?.replaySession?.activeEntry?.raw ?? ""),
       draftHost: connection.host,
       draftPort: connection.port,
       draftIsTls: connection.isTLS,
@@ -154,7 +155,7 @@ export const createSessionMention = (sdk: FrontendSDK) => {
         // mention-saved-item.ts), so every node rendered here offers an
         // upgrade.
         sdk.window.showToast(
-          "This note has a legacy request reference. Click \"Upgrade\" to switch it to the newer format.",
+          "This note has a legacy request reference. Click the Upgrade button to switch it to the newer format.",
           { variant: "warning" },
         );
 
@@ -294,9 +295,10 @@ export const createSessionMention = (sdk: FrontendSDK) => {
 
         loadSessionData(node.attrs.id);
 
-        emitter.on("refreshEditors", () => {
+        const handleRefresh = () => {
           loadSessionData(node.attrs.id);
-        });
+        };
+        emitter.on("refreshEditors", handleRefresh);
 
         container.addEventListener("dblclick", () => {
           sdk.replay.closeTab(node.attrs.id);
@@ -307,7 +309,7 @@ export const createSessionMention = (sdk: FrontendSDK) => {
         return {
           dom: container,
           destroy: () => {
-            emitter.off("refreshEditors");
+            emitter.off("refreshEditors", handleRefresh);
           },
         };
       };

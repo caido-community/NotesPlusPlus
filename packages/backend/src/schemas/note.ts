@@ -16,9 +16,21 @@ export const updateNoteSchema = z.object({
   updates: z.object({}).passthrough(),
 });
 
+export const noteContentItemSchema: z.ZodType<{
+  type: string;
+  content?: unknown[];
+  text?: string;
+  attrs?: Record<string, unknown>;
+}> = z.object({
+  type: z.string().min(1),
+  content: z.array(z.any()).optional(),
+  text: z.string().optional(),
+  attrs: z.record(z.unknown()).optional(),
+});
+
 export const appendToNoteSchema = z.object({
   path: z.string().min(1),
-  block: z.object({}).passthrough(),
+  block: noteContentItemSchema,
 });
 
 export const deleteNoteSchema = z.object({

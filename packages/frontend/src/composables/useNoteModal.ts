@@ -12,6 +12,7 @@ import { useDraggable } from "@/composables/useDraggable";
 import { useSDK } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
 import type { ModalPosition } from "@/types";
+import { decodeRawBlob } from "@/utils/httpEncoding";
 import {
   addBlockToContent,
   createSavedItemMention,
@@ -83,8 +84,27 @@ export function useNoteModal(options: NoteModalOptions = {}) {
     const activeEntryId = sessionResponse?.replaySession?.activeEntry?.id;
     if (!activeEntryId) return undefined;
 
+    const activeEntry = sessionResponse?.replaySession?.activeEntry;
     const entry = sdk.replay.getEntry(activeEntryId);
-    if (!entry.requestId) return undefined;
+
+    if (!entry.requestId) {
+      // Unsent draft — capture the raw text and connection info directly,
+      // the same way the `@`-trigger and "Save Request to Note" do.
+      const connection = activeEntry?.connection;
+      if (typeof connection?.host !== "string") return undefined;
+
+      return {
+        kind: "request",
+        refId: "",
+        sourceKind: "draft",
+        draftRaw: decodeRawBlob(activeEntry?.raw ?? ""),
+        draftHost: connection.host,
+        draftPort: connection.port,
+        draftIsTls: connection.isTLS,
+        replaySessionId: currentSession.id,
+        sessionLabel: currentSession.name,
+      };
+    }
 
     return {
       kind: "request",

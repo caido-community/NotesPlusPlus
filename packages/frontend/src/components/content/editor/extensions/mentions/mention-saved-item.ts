@@ -198,7 +198,16 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
           </div>`;
         };
 
+        const clearReplayTarget = () => {
+          replayRequestId = undefined;
+          draftConnection = undefined;
+          currentRawText = undefined;
+          savedReplaySessionId = undefined;
+          savedSessionLabel = undefined;
+        };
+
         const loadSavedItem = async (savedItem: SavedItem): Promise<void> => {
+          clearReplayTarget();
           try {
             const result = await sdk.backend.getSavedItem(savedItem);
 
@@ -251,9 +260,10 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
 
         loadSavedItem(item);
 
-        emitter.on("refreshEditors", () => {
+        const handleRefresh = () => {
           loadSavedItem(item);
-        });
+        };
+        emitter.on("refreshEditors", handleRefresh);
 
         overlay.addEventListener("dblclick", async () => {
           if (!replayRequestId && !draftConnection) {
@@ -301,17 +311,19 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
           // Create a fresh Replay session from the static snapshot.
           // createSession() returns void; the created session arrives
           // via onSessionCreate instead.
-          let sessionCreateSub: ReturnType<typeof sdk.replay.onSessionCreate> | undefined;
+          let handler:
+            | ReturnType<typeof sdk.replay.onSessionCreate>
+            | undefined;
           try {
-            sessionCreateSub = sdk.replay.onSessionCreate((event) => {
-              sessionCreateSub?.stop();
+            handler = sdk.replay.onSessionCreate((event) => {
+              handler?.stop();
               sdk.replay.openTab(event.session.id);
               sdk.navigation.goTo("/replay");
             });
 
             if (draftConnection) {
               if (!currentRawText) {
-                sessionCreateSub.stop();
+                handler.stop();
                 sdk.window.showToast("This item is no longer available", {
                   variant: "warning",
                 });
@@ -333,10 +345,10 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
                 id: replayRequestId,
               });
             } else {
-              sessionCreateSub.stop();
+              handler.stop();
             }
           } catch (err) {
-            sessionCreateSub?.stop();
+            handler?.stop();
             console.error("Error creating replay session:", err);
             sdk.window.showToast("Couldn't open this in Replay", {
               variant: "error",
@@ -347,7 +359,7 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
         return {
           dom: container,
           destroy: () => {
-            emitter.off("refreshEditors");
+            emitter.off("refreshEditors", handleRefresh);
           },
         };
       };

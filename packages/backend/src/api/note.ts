@@ -2,7 +2,14 @@ import * as fs from "fs";
 import path from "path";
 
 import type { SDK } from "caido:plugin";
-import type { Folder, Note, NoteContent, NoteContentItem, Result, TreeNode } from "shared";
+import type {
+  Folder,
+  Note,
+  NoteContent,
+  NoteContentItem,
+  Result,
+  TreeNode,
+} from "shared";
 import { error, ok } from "shared";
 
 import {

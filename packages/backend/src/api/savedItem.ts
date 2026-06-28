@@ -58,6 +58,7 @@ export async function getSavedItem(
             isTls: item.draftIsTls,
           },
           replaySessionId: item.replaySessionId,
+          sessionLabel: item.sessionLabel,
           label: item.label,
         });
       }
@@ -114,7 +115,7 @@ export async function getSavedItem(
       kind: "response",
       sourceKind: item.sourceKind,
       raw: response.data.response.raw,
-      requestId: item.parentRequestId ?? "",
+      ...(item.parentRequestId ? { requestId: item.parentRequestId } : {}),
       label: item.label,
     });
   } catch (err) {
