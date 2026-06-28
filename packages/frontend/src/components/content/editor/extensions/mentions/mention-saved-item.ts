@@ -301,16 +301,17 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
           // Create a fresh Replay session from the static snapshot.
           // createSession() returns void; the created session arrives
           // via onSessionCreate instead.
+          let sessionCreateSub: ReturnType<typeof sdk.replay.onSessionCreate> | undefined;
           try {
-            const handler = sdk.replay.onSessionCreate((event) => {
-              handler.stop();
+            sessionCreateSub = sdk.replay.onSessionCreate((event) => {
+              sessionCreateSub?.stop();
               sdk.replay.openTab(event.session.id);
               sdk.navigation.goTo("/replay");
             });
 
             if (draftConnection) {
               if (!currentRawText) {
-                handler.stop();
+                sessionCreateSub.stop();
                 sdk.window.showToast("This item is no longer available", {
                   variant: "warning",
                 });
@@ -332,9 +333,10 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
                 id: replayRequestId,
               });
             } else {
-              handler.stop();
+              sessionCreateSub.stop();
             }
           } catch (err) {
+            sessionCreateSub?.stop();
             console.error("Error creating replay session:", err);
             sdk.window.showToast("Couldn't open this in Replay", {
               variant: "error",
