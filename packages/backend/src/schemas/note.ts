@@ -16,17 +16,32 @@ export const updateNoteSchema = z.object({
   updates: z.object({}).passthrough(),
 });
 
-export const noteContentItemSchema: z.ZodType<{
+export interface NoteContentItemShape {
   type: string;
-  content?: unknown[];
+  content?: NoteContentItemShape[];
   text?: string;
   attrs?: Record<string, unknown>;
-}> = z.object({
-  type: z.string().min(1),
-  content: z.array(z.any()).optional(),
-  text: z.string().optional(),
-  attrs: z.record(z.unknown()).optional(),
-});
+}
+
+const MAX_CONTENT_DEPTH = 50;
+
+function buildNoteContentItemSchema(
+  depth: number,
+): z.ZodType<NoteContentItemShape> {
+  return z.lazy(() =>
+    z.object({
+      type: z.string().min(1),
+      content:
+        depth < MAX_CONTENT_DEPTH
+          ? z.array(buildNoteContentItemSchema(depth + 1)).optional()
+          : z.array(z.never()).optional(),
+      text: z.string().optional(),
+      attrs: z.record(z.unknown()).optional(),
+    }),
+  );
+}
+
+export const noteContentItemSchema = buildNoteContentItemSchema(0);
 
 export const appendToNoteSchema = z.object({
   path: z.string().min(1),

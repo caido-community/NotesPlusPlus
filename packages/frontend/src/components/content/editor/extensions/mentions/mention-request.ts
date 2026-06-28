@@ -105,7 +105,9 @@ async function resolveToSavedItem(
       kind: "request",
       refId: "",
       sourceKind: "draft",
-      draftRaw: decodeRawBlob(sessionResponse?.replaySession?.activeEntry?.raw ?? ""),
+      draftRaw: decodeRawBlob(
+        sessionResponse?.replaySession?.activeEntry?.raw ?? ""
+      ),
       draftHost: connection.host,
       draftPort: connection.port,
       draftIsTls: connection.isTLS,
@@ -125,6 +127,8 @@ async function resolveToSavedItem(
 }
 
 export const createSessionMention = (sdk: FrontendSDK) => {
+  let hasWarnedAboutLegacyMentions = false;
+
   return Mention.extend({
     // Mention.extend() defaults to a shared suggestion plugin key
     // (literally "mention"), which collides if another Mention.extend()
@@ -153,11 +157,15 @@ export const createSessionMention = (sdk: FrontendSDK) => {
 
         // mention is deprecated in favor of savedItemMention (see
         // mention-saved-item.ts), so every node rendered here offers an
-        // upgrade.
-        sdk.window.showToast(
-          "This note has a legacy request reference. Click the Upgrade button to switch it to the newer format.",
-          { variant: "warning" },
-        );
+        // upgrade. Warn once per editor mount — without this a note with
+        // several legacy mentions shows this repeatedly.
+        if (!hasWarnedAboutLegacyMentions) {
+          hasWarnedAboutLegacyMentions = true;
+          sdk.window.showToast(
+            "This note has a legacy request reference. Click the Upgrade button to switch it to the newer format.",
+            { variant: "warning" },
+          );
+        }
 
         const migrateButton = document.createElement("button");
         migrateButton.className = "embedded-replay-migrate";
@@ -230,6 +238,10 @@ export const createSessionMention = (sdk: FrontendSDK) => {
             migrateButton.disabled = false;
             migrateButton.textContent = "Upgrade";
           }
+        });
+
+        migrateButton.addEventListener("dblclick", (event) => {
+          event.stopPropagation();
         });
 
         const editorWrapper = document.createElement("div");
