@@ -1,6 +1,6 @@
 import { Mention } from "@tiptap/extension-mention";
 import type { SavedItem } from "shared";
-
+import { decodeRawBlob } from "@/utils/httpEncoding";
 import { type FrontendSDK } from "@/types";
 
 interface SessionItem {
@@ -71,7 +71,7 @@ export const createSessionTriggerMention = (sdk: FrontendSDK) => {
                       kind: "request",
                       refId: "",
                       sourceKind: "draft",
-                      draftRaw: atob(
+                      draftRaw: decodeRawBlob(
                         sessionResponse.replaySession.activeEntry.raw,
                       ),
                       draftHost:
