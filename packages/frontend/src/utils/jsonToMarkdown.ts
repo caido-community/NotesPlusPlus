@@ -4,10 +4,11 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TableRow } from "@tiptap/extension-table-row";
 import { StarterKit } from "@tiptap/starter-kit";
-import { type NoteContent, type NoteContentItem } from "shared";
+import { type NoteContent, type NoteContentItem, type SavedItem } from "shared";
 import { Markdown } from "tiptap-markdown";
 
 import { type FrontendSDK } from "@/types";
+import { decodeRawBlob } from "@/utils/httpEncoding";
 
 async function fetchReplaySessionContent(
   sdk: FrontendSDK,
@@ -78,6 +79,29 @@ function collectFileMentions(content: NoteContentItem[]): FileMention[] {
   return files;
 }
 
+function collectSavedItemMentions(content: NoteContentItem[]): SavedItem[] {
+  const items: SavedItem[] = [];
+
+  for (const node of content) {
+    if (node.type === "savedItemMention" && node.attrs) {
+      items.push(node.attrs as unknown as SavedItem);
+    }
+    if (node.content) {
+      items.push(...collectSavedItemMentions(node.content));
+    }
+  }
+
+  return items;
+}
+
+function savedItemKey(item: SavedItem): string {
+  // Drafts have no stable refId — key by their raw content instead.
+  if (item.sourceKind === "draft") {
+    return `draft:${item.draftHost}:${item.draftPort}:${item.draftRaw ?? ""}`;
+  }
+  return `${item.sourceKind}:${item.kind}:${item.refId}`;
+}
+
 function getFileExtension(filename: string): string {
   const parts = filename.split(".");
   return parts.length > 1 ? parts[parts.length - 1]!.toLowerCase() : "";
@@ -87,6 +111,7 @@ function processContentTokens(
   content: NoteContentItem[],
   httpContentMap: Map<string, string>,
   fileContentMap: Map<string, string>,
+  savedItemContentMap: Map<string, { raw: string; kind: string; label?: string }>,
 ): NoteContentItem[] {
   const result: NoteContentItem[] = [];
 
@@ -115,6 +140,30 @@ function processContentTokens(
               text: `[Replay Session: ${sessionId} (unavailable)]`,
             },
           ],
+        });
+      }
+    } else if (node.type === "savedItemMention" && node.attrs) {
+      const item = node.attrs as unknown as SavedItem;
+      const key = savedItemKey(item);
+      const resolved = savedItemContentMap.get(key);
+      const heading = item.label
+        ? `${item.kind === "response" ? "Response" : "Request"}: ${item.label}`
+        : `Saved ${item.kind === "response" ? "Response" : "Request"}`;
+
+      if (resolved) {
+        result.push({
+          type: "paragraph",
+          content: [{ type: "text", text: `**${heading}**` }],
+        });
+        result.push({
+          type: "codeBlock",
+          attrs: { language: "http" },
+          content: [{ type: "text", text: resolved.raw }],
+        });
+      } else {
+        result.push({
+          type: "paragraph",
+          content: [{ type: "text", text: `[${heading} (unavailable)]` }],
         });
       }
     } else if (node.type === "fileMention" && node.attrs) {
@@ -165,6 +214,7 @@ function processContentTokens(
           node.content,
           httpContentMap,
           fileContentMap,
+          savedItemContentMap,
         ),
       });
     } else {
@@ -181,9 +231,11 @@ export async function convertTipTapToMarkdown(
 ): Promise<string> {
   const mentionIds = collectMentionIds(content.content || []);
   const fileMentions = collectFileMentions(content.content || []);
+  const savedItemMentions = collectSavedItemMentions(content.content || []);
 
   const httpContentMap = new Map<string, string>();
   const fileContentMap = new Map<string, string>();
+  const savedItemContentMap = new Map<string, { raw: string; kind: string; label?: string }>();
 
   const promises: Promise<void>[] = [];
 
@@ -222,6 +274,33 @@ export async function convertTipTapToMarkdown(
     promises.push(p);
   }
 
+  // Fetch savedItemMention content via backend
+  if (savedItemMentions.length > 0) {
+    const p = (async () => {
+      const fetchPromises = savedItemMentions.map(async (item) => {
+        try {
+          const result = await sdk.backend.getSavedItem(item);
+          if (result.kind === "Success" && result.value.found) {
+            const resolved = result.value;
+            const raw =
+              resolved.sourceKind === "draft"
+                ? resolved.raw
+                : decodeRawBlob(resolved.raw);
+            savedItemContentMap.set(savedItemKey(item), {
+              raw,
+              kind: resolved.kind,
+              label: item.label,
+            });
+          }
+        } catch (err) {
+          console.error("Error fetching saved item for markdown export:", err);
+        }
+      });
+      await Promise.all(fetchPromises);
+    })();
+    promises.push(p);
+  }
+
   await Promise.all(promises);
 
   const processedContent: NoteContent = {
@@ -230,6 +309,7 @@ export async function convertTipTapToMarkdown(
       content.content || [],
       httpContentMap,
       fileContentMap,
+      savedItemContentMap,
     ),
   };
 
