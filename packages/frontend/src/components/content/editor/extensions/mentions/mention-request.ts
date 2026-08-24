@@ -2,7 +2,7 @@ import { Mention } from "@tiptap/extension-mention";
 import { PluginKey } from "@tiptap/pm/state";
 import type { SavedItem } from "shared";
 
-import { type FrontendSDK } from "@/types";
+import { type ActiveEntryWithRaw, type FrontendSDK } from "@/types";
 import { emitter } from "@/utils/eventBus";
 import { decodeRawBlob } from "@/utils/httpEncoding";
 
@@ -106,7 +106,10 @@ async function resolveToSavedItem(
       refId: "",
       sourceKind: "draft",
       draftRaw: decodeRawBlob(
-        sessionResponse?.replaySession?.activeEntry?.raw ?? ""
+        (
+          sessionResponse?.replaySession
+            ?.activeEntry as unknown as ActiveEntryWithRaw
+        )?.raw ?? "",
       ),
       draftHost: connection.host,
       draftPort: connection.port,

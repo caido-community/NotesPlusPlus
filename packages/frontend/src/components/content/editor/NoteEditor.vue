@@ -177,12 +177,12 @@ const editor = useEditor({
       heading: false,
     }),
     MarkdownHeading,
-    // @ts-expect-error - TipTap expects null for clientRect but we can't do it due to eslint rules
     SessionTriggerMention.configure({
       // pluginKey must be set here (not inside addOptions in
       // mention-session-trigger.ts) — .configure() replaces the whole
       // suggestion object, discarding anything set there. Without a
       // unique key this collides with SessionMention's.
+      // @ts-expect-error - SuggestionProps clientRect null/undefined mismatch with TipTap types
       suggestion: { ...suggestion, pluginKey: sessionTriggerPluginKey },
     }),
     MarkdownStyling,

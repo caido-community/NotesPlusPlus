@@ -533,7 +533,7 @@ export const useNotesStore = defineStore("notes", () => {
       if (currentNotePath.value === path) {
         const node = findNode(path);
         if (node && node.type === "note") {
-          node.content = updated.content;
+          (node as Note).content = updated.content;
         }
       }
       return updated;

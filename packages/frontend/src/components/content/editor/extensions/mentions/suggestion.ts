@@ -14,6 +14,7 @@ interface SessionItem {
 
 interface SuggestionProps {
   editor: Editor;
+
   clientRect?: (() => DOMRect | undefined) | undefined;
   event?: KeyboardEvent;
   range?: { from: number; to: number };

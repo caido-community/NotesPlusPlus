@@ -11,7 +11,7 @@ import { computed, ref, watch } from "vue";
 import { useDraggable } from "@/composables/useDraggable";
 import { useSDK } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
-import type { ModalPosition } from "@/types";
+import type { ActiveEntryWithRaw, ModalPosition } from "@/types";
 import { decodeRawBlob } from "@/utils/httpEncoding";
 import {
   addBlockToContent,
@@ -72,9 +72,7 @@ export function useNoteModal(options: NoteModalOptions = {}) {
    * Returns undefined if there's no active session/entry/request to
    * save — callers fall back to plain text in that case.
    */
-  async function trySaveCurrentReplayRequest(): Promise<
-    SavedItem | undefined
-  > {
+  async function trySaveCurrentReplayRequest(): Promise<SavedItem | undefined> {
     const currentSession = sdk.replay.getCurrentSession();
     if (!currentSession) return undefined;
 
@@ -97,7 +95,9 @@ export function useNoteModal(options: NoteModalOptions = {}) {
         kind: "request",
         refId: "",
         sourceKind: "draft",
-        draftRaw: decodeRawBlob(activeEntry?.raw ?? ""),
+        draftRaw: decodeRawBlob(
+          (activeEntry as unknown as ActiveEntryWithRaw)?.raw ?? "",
+        ),
         draftHost: connection.host,
         draftPort: connection.port,
         draftIsTls: connection.isTLS,

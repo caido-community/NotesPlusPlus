@@ -54,12 +54,12 @@ const editor = useEditor({
   extensions: [
     StarterKit.configure({ heading: false }),
     MarkdownHeading,
-    // @ts-expect-error - TipTap expects null for clientRect but we can't do it due to eslint rules
     SessionTriggerMention.configure({
       // See the comment on this same call in NoteEditor.vue: each
       // Mention.extend() instance otherwise defaults to a shared
       // suggestion plugin key, which collides once SessionMention
       // (mention-request.ts) is registered alongside this one.
+      // @ts-expect-error - SuggestionProps clientRect null/undefined mismatch with TipTap types
       suggestion: { ...suggestion, pluginKey: sessionTriggerPluginKey },
     }),
     MarkdownStyling,
