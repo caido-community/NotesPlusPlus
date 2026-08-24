@@ -47,39 +47,18 @@ export interface Reminder {
   dismissed: boolean;
 }
 
-/**
- * What kind of item is saved: a request, or a response.
- */
 export type SavedItemKind = "request" | "response";
 
-/**
- * Where the saved item was captured from.
- * - "history": Search / HTTP History / Sitemap (same underlying rows, same IDs)
- * - "replay": a Replay pane, after the request was actually sent
- * - "draft": a Replay pane, before the request was ever sent — there is
- *   no Request.id yet, so the raw content itself is stored directly
- */
 export type SavedItemSourceKind = "history" | "replay" | "draft";
 
 /**
- * A reference to a request or response saved into a note. This is the
- * literal shape stored as the `savedItemMention` node's `attrs` inside
- * the note's own JSON document — there is no separate record or lookup
- * table.
+ * Stored directly as `savedItemMention` node attrs — no separate lookup
+ * to facilitate integrity on the data.
  *
- * For "history" and "replay" items, only the ID (`refId`) is stored —
- * the raw HTTP content is always fetched live from Caido. For "draft"
- * items (an unsent Replay request, no Request.id yet), `refId` is
- * unused and `draftRaw`/`draftHost`/`draftPort`/`draftIsTls` carry the
- * data directly.
+ * Drafts (unsent Replay requests) have no `refId`; their content lives
+ * in `draftRaw`/`draftHost`/`draftPort`/`draftIsTls` instead.
  *
- * `parentRequestId` is only set when `kind === "response"`, since a
- * Response doesn't expose a path back to its request.
- *
- * `replaySessionId` / `sessionLabel` are only set when saved from a
- * Replay pane: they let double-click prefer reopening the original live
- * session (if it still has the same name) instead of creating a fresh
- * one from the static snapshot.
+ * `parentRequestId` is only set for `kind === "response"` to enable replay.
  */
 export interface SavedItem {
   kind: SavedItemKind;
@@ -95,16 +74,6 @@ export interface SavedItem {
   label?: string;
 }
 
-/**
- * The live content resolved for a SavedItem, fetched fresh from Caido
- * (for "history"/"replay" items) or read from the note's own attrs (for
- * "draft" items). `found: false` means the original request/response no
- * longer exists.
- *
- * `requestId` seeds a new Replay session via `{type: "ID", id}` for
- * "history"/"replay" items; `draftConnection` does the same via
- * `{type: "Raw", raw, connectionInfo}` for "draft" items.
- */
 export type ResolvedSavedItem =
   | {
       found: true;
