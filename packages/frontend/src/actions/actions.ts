@@ -182,14 +182,36 @@ export const saveRequestToNote = async (
         return;
       }
 
-      for (const req of ctx.requests) {
-        await addSavedItemToNote(sdk, {
-          kind: "request",
-          refId: req.id,
-          sourceKind: "history",
-          label: req.path,
-        });
+      const notesStore = useNotesStore();
+      const notePath = notesStore.currentNotePath;
+
+      if (!notePath) {
+        sdk.window.showToast(
+          "No note is currently open. Please open a note first.",
+          { variant: "warning" },
+        );
+        return;
       }
+
+      for (const req of ctx.requests) {
+        await notesStore.appendBlockToNote(
+          notePath,
+          createSavedItemMention({
+            kind: "request",
+            refId: req.id,
+            sourceKind: "history",
+            label: req.path,
+          }),
+        );
+      }
+
+      const count = ctx.requests.length;
+      sdk.window.showToast(
+        `${count} request${count > 1 ? "s" : ""} added to note`,
+        { variant: "success" },
+      );
+
+      await notesStore.refreshTree();
       return;
     }
 
