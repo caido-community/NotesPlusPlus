@@ -17,7 +17,6 @@ import MarkdownStyling from "@/components/content/editor/extensions/markdown-sty
 import { createFileMention } from "@/components/content/editor/extensions/mentions/mention-file";
 import { createSessionMention } from "@/components/content/editor/extensions/mentions/mention-request";
 import { createSavedItemMention } from "@/components/content/editor/extensions/mentions/mention-saved-item";
-import { createSessionTriggerMention } from "@/components/content/editor/extensions/mentions/mention-session-trigger";
 import createSuggestion from "@/components/content/editor/extensions/mentions/suggestion";
 import { SlashCommands } from "@/components/content/editor/extensions/slash-commands";
 import { useSDK } from "@/plugins/sdk";
@@ -29,8 +28,7 @@ const sdk = useSDK();
 const suggestion = createSuggestion(sdk);
 // See the comment at SessionTriggerMention.configure() below for why
 // this needs to be explicit and unique.
-const sessionTriggerPluginKey = new PluginKey("sessionTriggerSuggestion");
-const SessionTriggerMention = createSessionTriggerMention(sdk);
+const sessionMentionPluginKey = new PluginKey("sessionMentionSuggestion");
 const FileMention = createFileMention(sdk);
 const SavedItemMention = createSavedItemMention(sdk);
 const SessionMention = createSessionMention(sdk);
@@ -54,13 +52,12 @@ const editor = useEditor({
   extensions: [
     StarterKit.configure({ heading: false }),
     MarkdownHeading,
-    SessionTriggerMention.configure({
+    SessionMention.configure({
       // See the comment on this same call in NoteEditor.vue: each
       // Mention.extend() instance otherwise defaults to a shared
       // suggestion plugin key, which collides once SessionMention
       // (mention-request.ts) is registered alongside this one.
-      // @ts-expect-error - SuggestionProps clientRect null/undefined mismatch with TipTap types
-      suggestion: { ...suggestion, pluginKey: sessionTriggerPluginKey },
+      suggestion: { ...suggestion, pluginKey: sessionMentionPluginKey },
     }),
     MarkdownStyling,
     FileMention,

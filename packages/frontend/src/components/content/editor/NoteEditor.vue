@@ -34,7 +34,6 @@ import MarkdownStyling from "./extensions/markdown-styling";
 import { createFileMention } from "./extensions/mentions/mention-file";
 import { createSessionMention } from "./extensions/mentions/mention-request";
 import { createSavedItemMention } from "./extensions/mentions/mention-saved-item";
-import { createSessionTriggerMention } from "./extensions/mentions/mention-session-trigger";
 import createSuggestion from "./extensions/mentions/suggestion";
 import { ReminderNode } from "./extensions/reminder-node";
 import { Search } from "./extensions/search";
@@ -57,8 +56,7 @@ const remindersStore = useRemindersStore();
 const suggestion = createSuggestion(sdk);
 // See the comment at SessionTriggerMention.configure() below for why
 // this needs to be explicit and unique.
-const sessionTriggerPluginKey = new PluginKey("sessionTriggerSuggestion");
-const SessionTriggerMention = createSessionTriggerMention(sdk);
+const sessionMentionPluginKey = new PluginKey("sessionMentionSuggestion");
 const FileMention = createFileMention(sdk);
 const SavedItemMention = createSavedItemMention(sdk);
 const SessionMention = createSessionMention(sdk);
@@ -177,13 +175,13 @@ const editor = useEditor({
       heading: false,
     }),
     MarkdownHeading,
-    SessionTriggerMention.configure({
+
+    SessionMention.configure({
       // pluginKey must be set here (not inside addOptions in
       // mention-session-trigger.ts) — .configure() replaces the whole
       // suggestion object, discarding anything set there. Without a
       // unique key this collides with SessionMention's.
-      // @ts-expect-error - SuggestionProps clientRect null/undefined mismatch with TipTap types
-      suggestion: { ...suggestion, pluginKey: sessionTriggerPluginKey },
+      suggestion: { ...suggestion, pluginKey: sessionMentionPluginKey },
     }),
     MarkdownStyling,
     Search.configure({

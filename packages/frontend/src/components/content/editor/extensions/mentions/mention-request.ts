@@ -4,7 +4,11 @@ import { PluginKey } from "@tiptap/pm/state";
 import { type ActiveEntryWithRaw, type FrontendSDK } from "@/types";
 import { emitter } from "@/utils/eventBus";
 import { decodeRawBlob } from "@/utils/httpEncoding";
-import { createDraftSavedItem, createSavedItem } from "@/utils/noteUtils";
+import {
+  createDraftSavedItem,
+  createSavedItem,
+  createSavedItemMention,
+} from "@/utils/noteUtils";
 
 const styleId = "embedded-replay-editor-style";
 if (!document.getElementById(styleId)) {
@@ -68,6 +72,11 @@ if (!document.getElementById(styleId)) {
     }
   `;
   document.head.appendChild(style);
+}
+
+interface SessionItem {
+  id: string;
+  label: string;
 }
 
 /**
@@ -139,6 +148,85 @@ export const createSessionMention = (sdk: FrontendSDK) => {
         suggestion: {
           ...parent?.suggestion,
           pluginKey: new PluginKey("sessionMentionSuggestion"),
+          command: ({ editor, range, props }) => {
+            const item = props as SessionItem;
+
+            editor.chain().focus().deleteRange(range).run();
+
+            void (async () => {
+              try {
+                const sessionResponse = await sdk.graphql.replaySessionEntries({
+                  id: item.id,
+                });
+                const activeEntryId =
+                  sessionResponse?.replaySession?.activeEntry?.id;
+
+                if (!activeEntryId) {
+                  sdk.window.showToast("Replay session is not available", {
+                    variant: "warning",
+                  });
+                  return;
+                }
+
+                const entry = sdk.replay.getEntry(activeEntryId);
+                const session = { id: item.id, name: item.label };
+                let savedItem;
+
+                if (!entry.requestId) {
+                  const connection =
+                    sessionResponse?.replaySession?.activeEntry?.connection;
+                  if (typeof connection?.host !== "string") {
+                    sdk.window.showToast(
+                      "This session has no request to save yet",
+                      { variant: "warning" },
+                    );
+                    return;
+                  }
+
+                  savedItem = createDraftSavedItem({
+                    request: {
+                      raw: decodeRawBlob(
+                        (
+                          sessionResponse?.replaySession
+                            ?.activeEntry as unknown as ActiveEntryWithRaw
+                        )?.raw ?? "",
+                      ),
+                      host: connection.host,
+                      port: connection.port,
+                      isTLS: connection.isTLS,
+                      path: item.label,
+                    },
+                    session,
+                  });
+                } else {
+                  savedItem = createSavedItem({
+                    kind: "request",
+                    refId: entry.requestId,
+                    sourceKind: "replay",
+                    session,
+                    label: item.label,
+                  });
+                }
+
+                const { $from } = editor.state.selection;
+                const insertPos = $from.end($from.depth) + 1;
+
+                editor
+                  .chain()
+                  .focus()
+                  .insertContentAt(insertPos, {
+                    type: "savedItemMention",
+                    attrs: { ...createSavedItemMention(savedItem).attrs },
+                  })
+                  .run();
+              } catch (err) {
+                console.error("Error saving replay request from @:", err);
+                sdk.window.showToast("Couldn't save this request", {
+                  variant: "error",
+                });
+              }
+            })();
+          },
         },
       };
     },
