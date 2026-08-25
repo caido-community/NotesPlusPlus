@@ -19,7 +19,6 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TableRow } from "@tiptap/extension-table-row";
 import { type Slice } from "@tiptap/pm/model";
-import { PluginKey } from "@tiptap/pm/state";
 import { type EditorView } from "@tiptap/pm/view";
 import { StarterKit } from "@tiptap/starter-kit";
 import { type Editor, EditorContent, useEditor } from "@tiptap/vue-3";
@@ -34,7 +33,6 @@ import MarkdownStyling from "./extensions/markdown-styling";
 import { createFileMention } from "./extensions/mentions/mention-file";
 import { createSessionMention } from "./extensions/mentions/mention-request";
 import { createSavedItemMention } from "./extensions/mentions/mention-saved-item";
-import createSuggestion from "./extensions/mentions/suggestion";
 import { ReminderNode } from "./extensions/reminder-node";
 import { Search } from "./extensions/search";
 import SearchUI from "./extensions/search/SearchUI.vue";
@@ -53,10 +51,6 @@ const sdk = useSDK();
 const notesStore = useNotesStore();
 const contextMenuStore = useContextMenuStore();
 const remindersStore = useRemindersStore();
-const suggestion = createSuggestion(sdk);
-// See the comment at SessionTriggerMention.configure() below for why
-// this needs to be explicit and unique.
-const sessionMentionPluginKey = new PluginKey("sessionMentionSuggestion");
 const FileMention = createFileMention(sdk);
 const SavedItemMention = createSavedItemMention(sdk);
 const SessionMention = createSessionMention(sdk);
@@ -175,14 +169,7 @@ const editor = useEditor({
       heading: false,
     }),
     MarkdownHeading,
-
-    SessionMention.configure({
-      // pluginKey must be set here (not inside addOptions in
-      // mention-session-trigger.ts) — .configure() replaces the whole
-      // suggestion object, discarding anything set there. Without a
-      // unique key this collides with SessionMention's.
-      suggestion: { ...suggestion, pluginKey: sessionMentionPluginKey },
-    }),
+    SessionMention,
     MarkdownStyling,
     Search.configure({
       searchResultClass: "search-result",
@@ -207,7 +194,6 @@ const editor = useEditor({
     TableCell,
     FileMention,
     SavedItemMention,
-    SessionMention,
     ReminderNode,
     SlashCommands.configure({ sdk }),
   ],

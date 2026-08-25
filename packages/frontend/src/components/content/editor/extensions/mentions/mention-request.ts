@@ -9,6 +9,7 @@ import {
   createSavedItem,
   createSavedItemMention,
 } from "@/utils/noteUtils";
+import createSuggestion from "./suggestion";
 
 const styleId = "embedded-replay-editor-style";
 if (!document.getElementById(styleId)) {
@@ -134,6 +135,7 @@ async function resolveToSavedItem(
 }
 
 export const createSessionMention = (sdk: FrontendSDK) => {
+  const suggestion = createSuggestion(sdk);
   let hasWarnedAboutLegacyMentions = false;
 
   return Mention.extend({
@@ -147,6 +149,7 @@ export const createSessionMention = (sdk: FrontendSDK) => {
         ...parent,
         suggestion: {
           ...parent?.suggestion,
+          ...suggestion,
           pluginKey: new PluginKey("sessionMentionSuggestion"),
           command: ({ editor, range, props }) => {
             const item = props as SessionItem;
@@ -260,7 +263,6 @@ export const createSessionMention = (sdk: FrontendSDK) => {
         container.appendChild(migrateButton);
 
         migrateButton.addEventListener("click", async (event) => {
-          // Avoid triggering the dblclick-to-replay handler below.
           event.stopPropagation();
           migrateButton.disabled = true;
           migrateButton.textContent = "Upgrading...";
