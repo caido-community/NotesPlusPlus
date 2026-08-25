@@ -6,7 +6,8 @@ import NoteFloatModal from "@/components/shared/NoteFloatModal.vue";
 import NoteSearchModal from "@/components/shared/NoteSearchModal.vue";
 import { SDKPlugin } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
-import type { FrontendSDK } from "@/types";
+import type { ActiveEntryWithRaw, FrontendSDK } from "@/types";
+import { decodeRawBlob } from "@/utils/httpEncoding";
 import {
   addParagraphToContent,
   createDraftSavedItem,
@@ -49,6 +50,68 @@ const addSavedItemToNote = async (sdk: FrontendSDK, item: SavedItem) => {
 
   await notesStore.refreshTree();
 };
+
+/**
+ * Builds a SavedItem from the currently active Replay session.
+ * Works for both sent requests and unsent drafts, and optionally their
+ * associated response via activeEntry.request.response.id.
+ * Returns undefined if there's no active session or entry.
+ */
+export async function currentSelectedRequestData(
+  sdk: FrontendSDK,
+  kind: "request" | "response" = "request",
+): Promise<SavedItem | undefined> {
+  const currentSession = sdk.replay.getCurrentSession();
+  if (!currentSession) return undefined;
+
+  const sessionResponse = await sdk.graphql.replaySessionEntries({
+    id: currentSession.id,
+  });
+  const activeEntryId = sessionResponse?.replaySession?.activeEntry?.id;
+  if (!activeEntryId) return undefined;
+
+  const activeEntry = sessionResponse?.replaySession?.activeEntry;
+  const entry = sdk.replay.getEntry(activeEntryId);
+
+  if (kind === "response") {
+    const responseId = activeEntry?.request?.response?.id;
+    const requestId = activeEntry?.request?.id ?? entry.requestId;
+    if (!responseId || !requestId) return undefined;
+
+    return createSavedItem({
+      kind: "response",
+      refId: responseId,
+      parentRequestId: requestId,
+      sourceKind: "replay",
+      session: currentSession,
+      label: activeEntry?.request?.path,
+    });
+  }
+
+  if (!entry.requestId) {
+    const connection = activeEntry?.connection;
+    if (typeof connection?.host !== "string") return undefined;
+
+    return createDraftSavedItem({
+      request: {
+        raw: decodeRawBlob(
+          (activeEntry as unknown as ActiveEntryWithRaw)?.raw ?? "",
+        ),
+        host: connection.host,
+        port: connection.port,
+        isTLS: connection.isTLS,
+      },
+      session: currentSession,
+    });
+  }
+
+  return createSavedItem({
+    kind: "request",
+    refId: entry.requestId,
+    sourceKind: "replay",
+    session: currentSession,
+  });
+}
 
 /**
  * Shows the note modal for writing a new note
@@ -147,9 +210,7 @@ export const sendSelectedTextToNote = async (sdk: FrontendSDK) => {
 
       sdk.window.showToast(
         `Selected text added to note ${notesStore.currentNotePath}`,
-        {
-          variant: "success",
-        },
+        { variant: "success" },
       );
 
       await notesStore.refreshTree();
@@ -162,16 +223,12 @@ export const sendSelectedTextToNote = async (sdk: FrontendSDK) => {
 };
 
 /**
- * Saves a request (from a request-table row, or a Replay pane after the
- * request has actually been sent) to the currently open note.
+ * Saves a request to the currently open note.
  *
- * Works from any context where a request row or request pane provides a
- * real, persisted request ID:
- * - "RequestRowContext": Search, HTTP History, and Sitemap rows all share
- *   the same underlying Request IDs, so this is the canonical "history" case.
- * - "RequestContext": a Replay pane. If the request hasn't been sent yet
- *   (still a "RequestDraft", with no ID at all), there is nothing to save
- *   and we say so.
+ * Works from any context:
+ * - "RequestRowContext": Search, HTTP History, and Sitemap rows.
+ * - "RequestContext": a Replay pane with a sent or draft request.
+ * - "BaseContext": falls back to the currently active Replay session.
  */
 export const saveRequestToNote = async (
   sdk: FrontendSDK,
@@ -220,13 +277,9 @@ export const saveRequestToNote = async (
     }
 
     if (ctx.type === "RequestContext") {
-      // Captured so double-click can later check whether the live
-      // session still represents this request before reopening it.
       const currentSession = sdk.replay.getCurrentSession();
 
       if (ctx.request.type !== "RequestFull") {
-        // An unsent draft has no Request.id yet, but has raw text and
-        // connection info, which is enough to save a static snapshot.
         await addSavedItemToNote(
           sdk,
           createDraftSavedItem({
@@ -250,6 +303,20 @@ export const saveRequestToNote = async (
       return;
     }
 
+    // BaseContext — only attempt Replay fallback when on the Replay page.
+    if (window.location.hash === "#/replay") {
+      const saved = await currentSelectedRequestData(sdk, "request");
+      if (saved) {
+        await addSavedItemToNote(sdk, saved);
+        return;
+      }
+    } else {
+      sdk.window.showToast("This action can only be used on a replay page", {
+        variant: "warning",
+      });
+      return;
+    }
+
     sdk.window.showToast("No request available to save", {
       variant: "warning",
     });
@@ -261,34 +328,50 @@ export const saveRequestToNote = async (
 };
 
 /**
- * Saves a response (from a response pane) to the currently open note.
+ * Saves a response to the currently open note.
  *
- * A response pane always corresponds to an already-sent request, so both
- * IDs are real and persisted by the time this runs — there's no "draft"
- * case to guard against here, unlike saving a request from Replay.
+ * Works from any context:
+ * - "ResponseContext": right-click on a response pane.
+ * - "BaseContext": falls back to the active Replay session's response
+ *   via activeEntry.request.response.id, only when on the Replay page.
  */
 export const saveResponseToNote = async (
   sdk: FrontendSDK,
   ctx: CommandContext,
 ) => {
   try {
-    if (ctx.type !== "ResponseContext") {
-      sdk.window.showToast("No response available to save", {
+    if (ctx.type === "ResponseContext") {
+      await addSavedItemToNote(
+        sdk,
+        createSavedItem({
+          kind: "response",
+          refId: ctx.response.id,
+          parentRequestId: ctx.request.id,
+          sourceKind: window.location.hash === "#/replay" ? "replay" : "history",
+          label: ctx.request.path,
+        }),
+      );
+      return;
+    }
+
+    // BaseContext — only attempt Replay fallback when on the Replay page.
+    if (window.location.hash === "#/replay") {
+      const saved = await currentSelectedRequestData(sdk, "response");
+      if (saved) {
+        await addSavedItemToNote(sdk, saved);
+        return;
+      }
+    } else {
+      sdk.window.showToast("This action can only be used on a replay page", {
         variant: "warning",
       });
       return;
     }
 
-    await addSavedItemToNote(
-      sdk,
-      createSavedItem({
-        kind: "response",
-        refId: ctx.response.id,
-        parentRequestId: ctx.request.id,
-        sourceKind: window.location.hash === "#/replay" ? "replay" : "history",
-        label: ctx.request.path,
-      }),
-    );
+
+    sdk.window.showToast("No response available to save", {
+      variant: "warning",
+    });
   } catch (error) {
     sdk.window.showToast(`Error saving response to note: ${error}`, {
       variant: "error",

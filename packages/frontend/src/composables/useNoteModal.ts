@@ -7,15 +7,13 @@ import type {
 } from "shared";
 import { computed, ref, watch } from "vue";
 
+import { currentSelectedRequestData } from "@/actions/actions";
 import { useDraggable } from "@/composables/useDraggable";
 import { useSDK } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
-import type { ActiveEntryWithRaw, ModalPosition } from "@/types";
-import { decodeRawBlob } from "@/utils/httpEncoding";
+import type { ModalPosition } from "@/types";
 import {
   addBlockToContent,
-  createDraftSavedItem,
-  createSavedItem,
   createSavedItemMention,
   createTextParagraph,
 } from "@/utils/noteUtils";
@@ -65,54 +63,6 @@ export function useNoteModal(options: NoteModalOptions = {}) {
     options.onClose?.();
   }
 
-  /**
-   * If a Replay session is currently open, builds a static snapshot of
-   * its active entry's request (same mechanism as "Save Request to
-   * Note"), capturing the session ID/name for later match-or-reopen.
-   *
-   * Returns undefined if there's no active session/entry/request to
-   * save — callers fall back to plain text in that case.
-   */
-  async function trySaveCurrentReplayRequest() {
-    const currentSession = sdk.replay.getCurrentSession();
-    if (!currentSession) return undefined;
-
-    const sessionResponse = await sdk.graphql.replaySessionEntries({
-      id: currentSession.id,
-    });
-    const activeEntryId = sessionResponse?.replaySession?.activeEntry?.id;
-    if (!activeEntryId) return undefined;
-
-    const activeEntry = sessionResponse?.replaySession?.activeEntry;
-    const entry = sdk.replay.getEntry(activeEntryId);
-
-    if (!entry.requestId) {
-      // Unsent draft — capture the raw text and connection info directly,
-      // the same way the `@`-trigger and "Save Request to Note" do.
-      const connection = activeEntry?.connection;
-      if (typeof connection?.host !== "string") return undefined;
-
-      return createDraftSavedItem({
-        request: {
-          raw: decodeRawBlob(
-            (activeEntry as unknown as ActiveEntryWithRaw)?.raw ?? "",
-          ),
-          host: connection.host,
-          port: connection.port,
-          isTLS: connection.isTLS,
-        },
-        session: currentSession,
-      });
-    }
-
-    return createSavedItem({
-      kind: "request",
-      refId: entry.requestId,
-      sourceKind: "replay",
-      session: currentSession,
-    });
-  }
-
   async function save() {
     if (!noteContent.value.trim()) {
       close();
@@ -128,7 +78,7 @@ export function useNoteModal(options: NoteModalOptions = {}) {
 
     if (attachContext.value && isReplayPage.value) {
       try {
-        const saved = await trySaveCurrentReplayRequest();
+        const saved = await currentSelectedRequestData(sdk);
         if (saved) {
           blocks.push(createSavedItemMention(saved));
         } else {

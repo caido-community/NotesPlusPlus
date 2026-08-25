@@ -76,6 +76,8 @@ export const init = (sdk: FrontendSDK) => {
 
   sdk.commandPalette.register("notesplusplus:floating-modal");
   sdk.commandPalette.register("notesplusplus:send-selected-text");
+  sdk.commandPalette.register("notesplusplus:save-request");
+  sdk.commandPalette.register("notesplusplus:save-response");
   sdk.commandPalette.register("notesplusplus:search-notes");
 
   sdk.menu.registerItem({
@@ -84,19 +86,14 @@ export const init = (sdk: FrontendSDK) => {
     leadingIcon: "fas fa-file-alt",
   });
 
-  // Save a request from a Search / HTTP History / Sitemap row. All three
-  // pages share the same underlying request table and IDs, so one
-  // registration covers all of them.
+  // Save a request from a Search / HTTP History / Sitemap row.
   sdk.menu.registerItem({
     type: "RequestRow",
     commandId: "notesplusplus:save-request",
     leadingIcon: "fas fa-floppy-disk",
   });
 
-  // Save a request from a Replay pane, after it has actually been sent.
-  // This also captures the live session ID/name at save time, so
-  // double-click later can prefer reopening that session if it still
-  // represents the same request — see saveRequestToNote.
+  // Save a request from a Replay pane.
   sdk.menu.registerItem({
     type: "Request",
     commandId: "notesplusplus:save-request",
