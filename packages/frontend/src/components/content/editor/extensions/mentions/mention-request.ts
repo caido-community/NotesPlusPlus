@@ -1,10 +1,10 @@
 import { Mention } from "@tiptap/extension-mention";
 import { PluginKey } from "@tiptap/pm/state";
-import type { SavedItem } from "shared";
 
 import { type ActiveEntryWithRaw, type FrontendSDK } from "@/types";
 import { emitter } from "@/utils/eventBus";
 import { decodeRawBlob } from "@/utils/httpEncoding";
+import { createDraftSavedItem, createSavedItem } from "@/utils/noteUtils";
 
 const styleId = "embedded-replay-editor-style";
 if (!document.getElementById(styleId)) {
@@ -79,7 +79,7 @@ async function resolveToSavedItem(
   sdk: FrontendSDK,
   sessionId: string,
   label: string | undefined,
-): Promise<SavedItem | undefined> {
+) {
   const sessionResponse = await sdk.graphql.replaySessionEntries({
     id: sessionId,
   });
@@ -89,44 +89,39 @@ async function resolveToSavedItem(
     return undefined;
   }
 
-  // Used as the best-effort sessionLabel for later match-or-reopen.
   const liveSession = sdk.replay.getSessions().find((s) => s.id === sessionId);
-
   const entry = sdk.replay.getEntry(activeEntryId);
 
   if (!entry.requestId) {
-    // Unsent draft — capture the raw text and connection info directly.
     const connection = sessionResponse?.replaySession?.activeEntry?.connection;
     if (typeof connection?.host !== "string") {
       return undefined;
     }
 
-    return {
-      kind: "request",
-      refId: "",
-      sourceKind: "draft",
-      draftRaw: decodeRawBlob(
-        (
-          sessionResponse?.replaySession
-            ?.activeEntry as unknown as ActiveEntryWithRaw
-        )?.raw ?? "",
-      ),
-      draftHost: connection.host,
-      draftPort: connection.port,
-      draftIsTls: connection.isTLS,
-      label,
-      replaySessionId: sessionId,
-    };
+    return createDraftSavedItem({
+      request: {
+        raw: decodeRawBlob(
+          (
+            sessionResponse?.replaySession
+              ?.activeEntry as unknown as ActiveEntryWithRaw
+          )?.raw ?? "",
+        ),
+        host: connection.host,
+        port: connection.port,
+        isTLS: connection.isTLS,
+        path: label,
+      },
+      session: liveSession,
+    });
   }
 
-  return {
+  return createSavedItem({
     kind: "request",
     refId: entry.requestId,
     sourceKind: "replay",
-    replaySessionId: sessionId,
-    sessionLabel: liveSession?.name,
+    session: liveSession,
     label,
-  };
+  });
 }
 
 export const createSessionMention = (sdk: FrontendSDK) => {

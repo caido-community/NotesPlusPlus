@@ -4,7 +4,6 @@ import type {
   NoteContent,
   NoteContentItem,
   NoteModalSaveData,
-  SavedItem,
 } from "shared";
 import { computed, ref, watch } from "vue";
 
@@ -15,6 +14,8 @@ import type { ActiveEntryWithRaw, ModalPosition } from "@/types";
 import { decodeRawBlob } from "@/utils/httpEncoding";
 import {
   addBlockToContent,
+  createDraftSavedItem,
+  createSavedItem,
   createSavedItemMention,
   createTextParagraph,
 } from "@/utils/noteUtils";
@@ -72,7 +73,7 @@ export function useNoteModal(options: NoteModalOptions = {}) {
    * Returns undefined if there's no active session/entry/request to
    * save — callers fall back to plain text in that case.
    */
-  async function trySaveCurrentReplayRequest(): Promise<SavedItem | undefined> {
+  async function trySaveCurrentReplayRequest() {
     const currentSession = sdk.replay.getCurrentSession();
     if (!currentSession) return undefined;
 
@@ -91,28 +92,25 @@ export function useNoteModal(options: NoteModalOptions = {}) {
       const connection = activeEntry?.connection;
       if (typeof connection?.host !== "string") return undefined;
 
-      return {
-        kind: "request",
-        refId: "",
-        sourceKind: "draft",
-        draftRaw: decodeRawBlob(
-          (activeEntry as unknown as ActiveEntryWithRaw)?.raw ?? "",
-        ),
-        draftHost: connection.host,
-        draftPort: connection.port,
-        draftIsTls: connection.isTLS,
-        replaySessionId: currentSession.id,
-        sessionLabel: currentSession.name,
-      };
+      return createDraftSavedItem({
+        request: {
+          raw: decodeRawBlob(
+            (activeEntry as unknown as ActiveEntryWithRaw)?.raw ?? "",
+          ),
+          host: connection.host,
+          port: connection.port,
+          isTLS: connection.isTLS,
+        },
+        session: currentSession,
+      });
     }
 
-    return {
+    return createSavedItem({
       kind: "request",
       refId: entry.requestId,
       sourceKind: "replay",
-      replaySessionId: currentSession.id,
-      sessionLabel: currentSession.name,
-    };
+      session: currentSession,
+    });
   }
 
   async function save() {

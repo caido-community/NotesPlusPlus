@@ -1,8 +1,12 @@
 import { Mention } from "@tiptap/extension-mention";
-import type { SavedItem } from "shared";
 
 import { type ActiveEntryWithRaw, type FrontendSDK } from "@/types";
 import { decodeRawBlob } from "@/utils/httpEncoding";
+import {
+  createDraftSavedItem,
+  createSavedItem,
+  createSavedItemMention,
+} from "@/utils/noteUtils";
 
 interface SessionItem {
   id: string;
@@ -61,51 +65,45 @@ export const createSessionTriggerMention = (sdk: FrontendSDK) => {
                   });
                   return;
                 }
+
                 const entry = sdk.replay.getEntry(activeEntryId);
-                let savedItem: SavedItem;
+                const session = { id: item.id, name: item.label };
+                let savedItem;
+
                 if (!entry.requestId) {
-                  if (
-                    typeof sessionResponse?.replaySession?.activeEntry
-                      ?.connection?.host == "string"
-                  ) {
-                    savedItem = {
-                      kind: "request",
-                      refId: "",
-                      sourceKind: "draft",
-                      draftRaw: decodeRawBlob(
-                        (
-                          sessionResponse?.replaySession
-                            ?.activeEntry as unknown as ActiveEntryWithRaw
-                        )?.raw ?? "",
-                      ),
-                      draftHost:
-                        sessionResponse.replaySession.activeEntry.connection
-                          .host,
-                      draftPort:
-                        sessionResponse.replaySession.activeEntry.connection
-                          .port,
-                      draftIsTls:
-                        sessionResponse.replaySession.activeEntry.connection
-                          .isTLS,
-                      label: item.label,
-                      replaySessionId: item.id,
-                    };
-                  } else {
+                  const connection =
+                    sessionResponse?.replaySession?.activeEntry?.connection;
+                  if (typeof connection?.host !== "string") {
                     sdk.window.showToast(
                       "This session has no request to save yet",
                       { variant: "warning" },
                     );
                     return;
                   }
+
+                  savedItem = createDraftSavedItem({
+                    request: {
+                      raw: decodeRawBlob(
+                        (
+                          sessionResponse?.replaySession
+                            ?.activeEntry as unknown as ActiveEntryWithRaw
+                        )?.raw ?? "",
+                      ),
+                      host: connection.host,
+                      port: connection.port,
+                      isTLS: connection.isTLS,
+                      path: item.label,
+                    },
+                    session,
+                  });
                 } else {
-                  savedItem = {
+                  savedItem = createSavedItem({
                     kind: "request",
                     refId: entry.requestId,
                     sourceKind: "replay",
-                    replaySessionId: item.id,
-                    sessionLabel: item.label,
+                    session,
                     label: item.label,
-                  };
+                  });
                 }
 
                 // Insert right after the current block — savedItemMention
@@ -118,7 +116,7 @@ export const createSessionTriggerMention = (sdk: FrontendSDK) => {
                   .focus()
                   .insertContentAt(insertPos, {
                     type: "savedItemMention",
-                    attrs: { ...savedItem },
+                    attrs: { ...createSavedItemMention(savedItem).attrs },
                   })
                   .run();
               } catch (err) {

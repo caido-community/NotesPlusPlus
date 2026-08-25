@@ -9,6 +9,8 @@ import { useNotesStore } from "@/stores/notes";
 import type { FrontendSDK } from "@/types";
 import {
   addParagraphToContent,
+  createDraftSavedItem,
+  createSavedItem,
   createSavedItemMention,
   createTextParagraph,
 } from "@/utils/noteUtils";
@@ -196,12 +198,14 @@ export const saveRequestToNote = async (
       for (const req of ctx.requests) {
         await notesStore.appendBlockToNote(
           notePath,
-          createSavedItemMention({
-            kind: "request",
-            refId: req.id,
-            sourceKind: "history",
-            label: req.path,
-          }),
+          createSavedItemMention(
+            createSavedItem({
+              kind: "request",
+              refId: req.id,
+              sourceKind: "history",
+              label: req.path,
+            }),
+          ),
         );
       }
 
@@ -223,28 +227,26 @@ export const saveRequestToNote = async (
       if (ctx.request.type !== "RequestFull") {
         // An unsent draft has no Request.id yet, but has raw text and
         // connection info, which is enough to save a static snapshot.
-        await addSavedItemToNote(sdk, {
-          kind: "request",
-          refId: "",
-          sourceKind: "draft",
-          draftRaw: ctx.request.raw,
-          draftHost: ctx.request.host,
-          draftPort: ctx.request.port,
-          draftIsTls: ctx.request.isTls,
-          replaySessionId: currentSession?.id,
-          label: ctx.request.path,
-        });
+        await addSavedItemToNote(
+          sdk,
+          createDraftSavedItem({
+            request: ctx.request,
+            session: currentSession ?? undefined,
+          }),
+        );
         return;
       }
 
-      await addSavedItemToNote(sdk, {
-        kind: "request",
-        refId: ctx.request.id,
-        sourceKind: "replay",
-        replaySessionId: currentSession?.id,
-        sessionLabel: currentSession?.name,
-        label: ctx.request.path,
-      });
+      await addSavedItemToNote(
+        sdk,
+        createSavedItem({
+          kind: "request",
+          refId: ctx.request.id,
+          sourceKind: "replay",
+          session: currentSession ?? undefined,
+          label: ctx.request.path,
+        }),
+      );
       return;
     }
 
@@ -277,13 +279,16 @@ export const saveResponseToNote = async (
       return;
     }
 
-    await addSavedItemToNote(sdk, {
-      kind: "response",
-      refId: ctx.response.id,
-      parentRequestId: ctx.request.id,
-      sourceKind: window.location.hash === "#/replay" ? "replay" : "history",
-      label: ctx.request.path,
-    });
+    await addSavedItemToNote(
+      sdk,
+      createSavedItem({
+        kind: "response",
+        refId: ctx.response.id,
+        parentRequestId: ctx.request.id,
+        sourceKind: window.location.hash === "#/replay" ? "replay" : "history",
+        label: ctx.request.path,
+      }),
+    );
   } catch (error) {
     sdk.window.showToast(`Error saving response to note: ${error}`, {
       variant: "error",
