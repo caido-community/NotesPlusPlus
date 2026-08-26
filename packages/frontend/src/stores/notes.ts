@@ -527,13 +527,14 @@ export const useNotesStore = defineStore("notes", () => {
    * saving several selected requests in one action) can't overwrite
    * each other.
    */
-  async function appendBlockToNote(path: string, block: NoteContentItem) {
+  async function appendBlockToNote(path: string, block: NoteContentItem): Promise<Note | undefined> {
     try {
       const updated = await repository.appendToNote(path, block);
       if (currentNotePath.value === path) {
         const node = findNode(path);
         if (node && node.type === "note") {
-          (node as Note).content = updated.content;
+          const note = node as Note;
+          note.content = updated.content;
         }
       }
       return updated;
@@ -541,7 +542,7 @@ export const useNotesStore = defineStore("notes", () => {
       sdk.window.showToast(`Error appending to note: ${error}`, {
         variant: "error",
       });
-      return false;
+      return undefined;
     }
   }
 
