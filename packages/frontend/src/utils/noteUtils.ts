@@ -36,26 +36,6 @@ export function addParagraphToContent(
   };
 }
 
-/**
- * Adds a block-level node (e.g. `savedItemMention`, `fileMention`)
- * directly to the document's top-level content, without wrapping it in
- * a paragraph — paragraphs only accept inline content, so a
- * `group: "block"` node nested inside one is an invalid document.
- */
-export function addBlockToContent(
-  currentContent: NoteContent | undefined,
-  block: NoteContentItem,
-): NoteContent {
-  const content = currentContent || {
-    type: "doc",
-    content: [],
-  };
-
-  return {
-    ...content,
-    content: [...(content.content || []), block],
-  };
-}
 
 /**
  * Creates a saved request/response mention content item. `item` is the

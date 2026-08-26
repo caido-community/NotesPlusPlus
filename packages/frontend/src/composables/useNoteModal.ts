@@ -13,7 +13,7 @@ import { useSDK } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
 import type { ModalPosition } from "@/types";
 import {
-  addBlockToContent,
+  addParagraphToContent,
   createSavedItemMention,
   createTextParagraph,
 } from "@/utils/noteUtils";
@@ -99,7 +99,7 @@ export function useNoteModal(options: NoteModalOptions = {}) {
       if (notesStore.currentNote) {
         let updatedContent = notesStore.currentNote.content;
         for (const block of blocks) {
-          updatedContent = addBlockToContent(updatedContent, block);
+          updatedContent = addParagraphToContent(updatedContent, block);
         }
 
         notesStore.selectNote(selectedNotePath.value);
