@@ -16,8 +16,89 @@ import {
   createTextParagraph,
 } from "@/utils/noteUtils";
 
+// ---------------------------------------------------------------------------
+// Pinia host-app row extraction
+// ---------------------------------------------------------------------------
+
 /**
- * Adds a saved-item mention (request or response) to the currently open
+ * Normalized shape we extract from whichever tab's pinia store is active.
+ * Everything downstream only needs these four fields.
+ */
+interface SelectedRow {
+  requestId: string;
+  responseId: string | undefined;
+  path: string | undefined;
+  /** Maps directly to SavedItem sourceKind */
+  sourceKind: "history" | "replay";
+}
+
+function getHostPinia(): any | null {
+  const el = document.querySelector("#app") as any;
+  return (
+    el?.__vue_app__?.config?.globalProperties?.$pinia ??
+    el?.__vue_app__?._context?.provides?.pinia ??
+    null
+  );
+}
+
+/**
+ * Reads selected rows from the correct Pinia store for the current page and
+ * normalizes them into SelectedRow objects.
+ */
+function getPiniaSelectedRows(): SelectedRow[] {
+  const pinia = getHostPinia();
+  if (!pinia) return [];
+
+  const state = pinia?.state?.value ?? {};
+  const hash  = window.location.hash;
+
+  if (hash === "#/http-history") {
+    const raw: any[] = [...(state["stores.http-history.state"]?.selectedRows ?? [])];
+    return raw.flatMap((edge) => {
+      const req = edge?.node?.request;
+      if (!req?.id) return [];
+      return [{
+        requestId:  String(req.id),
+        responseId: req.response?.id != null ? String(req.response.id) : undefined,
+        path:       req.path ?? undefined,
+        sourceKind: "history",
+      }];
+    });
+  }
+
+  if (hash === "#/search") {
+    const raw: any[] = [...(state["stores.search.state"]?.selectedRows ?? [])];
+    return raw.flatMap((edge) => {
+      const node = edge?.node;
+      if (!node?.id) return [];
+      return [{
+        requestId:  String(node.id),
+        responseId: node.response?.id != null ? String(node.response.id) : undefined,
+        path:       node.path ?? undefined,
+        sourceKind: "history",
+      }];
+    });
+  }
+
+  if (hash === "#/sitemap") {
+    const raw: any[] = [...(state["stores.sitemap.state"]?.selectedRequests ?? [])];
+    return raw.flatMap((req) => {
+      if (!req?.id) return [];
+      return [{
+        requestId:  String(req.id),
+        responseId: req.response?.id != null ? String(req.response.id) : undefined,
+        path:       req.path ?? undefined,
+        sourceKind: "history",
+      }];
+    });
+  }
+
+  return [];
+}
+
+
+/**
+* Adds a saved-item mention (request or response) to the currently open
  * note, sharing the "no note open" guard and success toast across the
  * save-to-note actions below. `item` is a complete `SavedItem`, appended
  * directly into the note's JSON content on the backend.
@@ -134,7 +215,7 @@ export const showNoteModal = (sdk: FrontendSDK) => {
           modalApp.unmount();
           modalContainer.remove();
         },
-        onSave: (data: { content: string; attachContext: boolean }) => {
+        onSave: (_data: { content: string; attachContext: boolean }) => {
           modalApp.unmount();
           modalContainer.remove();
         },
@@ -225,10 +306,14 @@ export const sendSelectedTextToNote = async (sdk: FrontendSDK) => {
 /**
  * Saves a request to the currently open note.
  *
- * Works from any context:
- * - "RequestRowContext": Search, HTTP History, and Sitemap rows.
- * - "RequestContext": a Replay pane with a sent or draft request.
- * - "BaseContext": falls back to the currently active Replay session.
+ * Context priority:
+ *   1. "RequestRowContext"  — right-click row menu on any tab (SDK provides IDs directly)
+ *   2. "RequestContext"     — Replay pane request/draft
+ *   3. "BaseContext"        — Command Palette:
+ *        • #/replay         → active Replay session (existing behaviour)
+ *        • #/http-history,
+ *          #/search,
+ *          #/sitemap        → Pinia selectedRows workaround
  */
 export const saveRequestToNote = async (
   sdk: FrontendSDK,
@@ -303,23 +388,72 @@ export const saveRequestToNote = async (
       return;
     }
 
-    // BaseContext — only attempt Replay fallback when on the Replay page.
-    if (window.location.hash === "#/replay") {
+    const hash = window.location.hash;
+
+    if (hash === "#/replay") {
       const saved = await currentSelectedRequestData(sdk, "request");
       if (saved) {
         await addSavedItemToNote(sdk, saved);
         return;
       }
-    } else {
-      sdk.window.showToast("This action can only be used on a replay page", {
-        variant: "warning",
-      });
+      sdk.window.showToast("No request available to save", { variant: "warning" });
       return;
     }
 
-    sdk.window.showToast("No request available to save", {
-      variant: "warning",
-    });
+    if (
+      hash === "#/http-history" ||
+      hash === "#/search" ||
+      hash === "#/sitemap"
+    ) {
+      const rows = getPiniaSelectedRows();
+
+      if (rows.length === 0) {
+        sdk.window.showToast(
+          "No request selected. Select one or more rows in the table first.",
+          { variant: "warning" },
+        );
+        return;
+      }
+
+      const notesStore = useNotesStore();
+      const notePath = notesStore.currentNotePath;
+
+      if (!notePath) {
+        sdk.window.showToast(
+          "No note is currently open. Please open a note first.",
+          { variant: "warning" },
+        );
+        return;
+      }
+
+      for (const row of rows) {
+        await notesStore.appendBlockToNote(
+          notePath,
+          createSavedItemMention(
+            createSavedItem({
+              kind: "request",
+              refId: row.requestId,
+              sourceKind: row.sourceKind,
+              label: row.path,
+            }),
+          ),
+        );
+      }
+
+      const count = rows.length;
+      sdk.window.showToast(
+        `${count} request${count > 1 ? "s" : ""} added to note`,
+        { variant: "success" },
+      );
+
+      await notesStore.refreshTree();
+      return;
+    }
+
+    sdk.window.showToast(
+      "This action is not available on the current page.",
+      { variant: "warning" },
+    );
   } catch (error) {
     sdk.window.showToast(`Error saving request to note: ${error}`, {
       variant: "error",
@@ -330,10 +464,13 @@ export const saveRequestToNote = async (
 /**
  * Saves a response to the currently open note.
  *
- * Works from any context:
- * - "ResponseContext": right-click on a response pane.
- * - "BaseContext": falls back to the active Replay session's response
- *   via activeEntry.request.response.id, only when on the Replay page.
+ * Context priority:
+ *   1. "ResponseContext"    — right-click response pane (SDK provides IDs directly)
+ *   2. "BaseContext"        — Command Palette:
+ *        • #/replay         → active Replay session response (existing behaviour)
+ *        • #/http-history,
+ *          #/search,
+ *          #/sitemap        → Pinia selectedRows workaround
  */
 export const saveResponseToNote = async (
   sdk: FrontendSDK,
@@ -354,24 +491,83 @@ export const saveResponseToNote = async (
       return;
     }
 
-    // BaseContext — only attempt Replay fallback when on the Replay page.
-    if (window.location.hash === "#/replay") {
+    const hash = window.location.hash;
+
+    if (hash === "#/replay") {
       const saved = await currentSelectedRequestData(sdk, "response");
       if (saved) {
         await addSavedItemToNote(sdk, saved);
         return;
       }
-    } else {
-      sdk.window.showToast("This action can only be used on a replay page", {
-        variant: "warning",
-      });
+      sdk.window.showToast("No response available to save", { variant: "warning" });
       return;
     }
 
+    if (
+      hash === "#/http-history" ||
+      hash === "#/search" ||
+      hash === "#/sitemap"
+    ) {
+      const rows = getPiniaSelectedRows();
 
-    sdk.window.showToast("No response available to save", {
-      variant: "warning",
-    });
+      if (rows.length === 0) {
+        sdk.window.showToast(
+          "No request selected. Select one or more rows in the table first.",
+          { variant: "warning" },
+        );
+        return;
+      }
+
+      const rowsWithResponse = rows.filter((r) => r.responseId != null);
+
+      if (rowsWithResponse.length === 0) {
+        sdk.window.showToast(
+          "The selected request(s) have no recorded response.",
+          { variant: "warning" },
+        );
+        return;
+      }
+
+      const notesStore = useNotesStore();
+      const notePath = notesStore.currentNotePath;
+
+      if (!notePath) {
+        sdk.window.showToast(
+          "No note is currently open. Please open a note first.",
+          { variant: "warning" },
+        );
+        return;
+      }
+
+      for (const row of rowsWithResponse) {
+        await notesStore.appendBlockToNote(
+          notePath,
+          createSavedItemMention(
+            createSavedItem({
+              kind: "response",
+              refId: row.responseId!,
+              parentRequestId: row.requestId,
+              sourceKind: row.sourceKind,
+              label: row.path,
+            }),
+          ),
+        );
+      }
+
+      const count = rowsWithResponse.length;
+      sdk.window.showToast(
+        `${count} response${count > 1 ? "s" : ""} added to note`,
+        { variant: "success" },
+      );
+
+      await notesStore.refreshTree();
+      return;
+    }
+
+    sdk.window.showToast(
+      "This action is not available on the current page.",
+      { variant: "warning" },
+    );
   } catch (error) {
     sdk.window.showToast(`Error saving response to note: ${error}`, {
       variant: "error",
