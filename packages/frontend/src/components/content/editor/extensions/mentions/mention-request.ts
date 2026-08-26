@@ -7,7 +7,7 @@ import { decodeRawBlob } from "@/utils/httpEncoding";
 import {
   createDraftSavedItem,
   createSavedItem,
-  createSavedItemMention,
+  buildSavedItemBlock,
 } from "@/utils/noteUtils";
 import createSuggestion from "./suggestion";
 
@@ -219,7 +219,7 @@ export const createSessionMention = (sdk: FrontendSDK) => {
                   .focus()
                   .insertContentAt(insertPos, {
                     type: "savedItemMention",
-                    attrs: { ...createSavedItemMention(savedItem).attrs },
+                    attrs: { ...buildSavedItemBlock(savedItem).attrs },
                   })
                   .run();
               } catch (err) {

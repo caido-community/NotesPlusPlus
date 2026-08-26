@@ -12,7 +12,7 @@ import {
   addParagraphToContent,
   createDraftSavedItem,
   createSavedItem,
-  createSavedItemMention,
+  buildSavedItemBlock,
   createTextParagraph,
 } from "@/utils/noteUtils";
 
@@ -117,7 +117,7 @@ const addSavedItemToNote = async (sdk: FrontendSDK, item: SavedItem) => {
 
   const result = await notesStore.appendBlockToNote(
     notePath,
-    createSavedItemMention(item),
+    buildSavedItemBlock(item),
   );
 
   if (!result) {
@@ -340,7 +340,7 @@ export const saveRequestToNote = async (
       for (const req of ctx.requests) {
         await notesStore.appendBlockToNote(
           notePath,
-          createSavedItemMention(
+          buildSavedItemBlock(
             createSavedItem({
               kind: "request",
               refId: req.id,
@@ -429,7 +429,7 @@ export const saveRequestToNote = async (
       for (const row of rows) {
         await notesStore.appendBlockToNote(
           notePath,
-          createSavedItemMention(
+          buildSavedItemBlock(
             createSavedItem({
               kind: "request",
               refId: row.requestId,
@@ -542,7 +542,7 @@ export const saveResponseToNote = async (
       for (const row of rowsWithResponse) {
         await notesStore.appendBlockToNote(
           notePath,
-          createSavedItemMention(
+          buildSavedItemBlock(
             createSavedItem({
               kind: "response",
               refId: row.responseId!,

@@ -14,7 +14,7 @@ import { useNotesStore } from "@/stores/notes";
 import type { ModalPosition } from "@/types";
 import {
   addParagraphToContent,
-  createSavedItemMention,
+  buildSavedItemBlock,
   createTextParagraph,
 } from "@/utils/noteUtils";
 
@@ -80,7 +80,7 @@ export function useNoteModal(options: NoteModalOptions = {}) {
       try {
         const saved = await currentSelectedRequestData(sdk);
         if (saved) {
-          blocks.push(createSavedItemMention(saved));
+          blocks.push(buildSavedItemBlock(saved));
         } else {
           sdk.window.showToast("No active replay session found", {
             variant: "warning",

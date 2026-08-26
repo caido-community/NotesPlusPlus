@@ -42,7 +42,7 @@ export function addParagraphToContent(
  * entire `SavedItem` — kind, refId, sourceKind, and so on — stored
  * directly as the node's `attrs` inside the note's own JSON document.
  */
-export function createSavedItemMention(item: SavedItem): NoteContentItem {
+export function buildSavedItemBlock(item: SavedItem): NoteContentItem {
   return {
     type: "savedItemMention",
     attrs: { ...item },
