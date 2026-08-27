@@ -10,15 +10,46 @@ import type { ActiveEntryWithRaw, FrontendSDK } from "@/types";
 import { decodeRawBlob } from "@/utils/httpEncoding";
 import {
   addParagraphToContent,
+  buildSavedItemBlock,
   createDraftSavedItem,
   createSavedItem,
-  buildSavedItemBlock,
   createTextParagraph,
 } from "@/utils/noteUtils";
 
 // ---------------------------------------------------------------------------
 // Pinia host-app row extraction
 // ---------------------------------------------------------------------------
+
+/**
+ * Vue attaches `__vue_app__` to the host DOM element at runtime.
+ */
+declare global {
+  interface Element {
+    __vue_app__?: {
+      config?: { globalProperties?: Record<string, unknown> };
+      _context?: { provides?: Record<string, unknown> };
+    };
+  }
+}
+
+interface PiniaHistoryEdge {
+  node?: {
+    id?: string | number;
+    path?: string;
+    response?: { id?: string | number };
+    request?: {
+      id?: string | number;
+      path?: string;
+      response?: { id?: string | number };
+    };
+  };
+}
+
+interface PiniaSitemapRequest {
+  id?: string | number;
+  path?: string;
+  response?: { id?: string | number };
+}
 
 /**
  * Normalized shape we extract from whichever tab's pinia store is active.
@@ -32,12 +63,12 @@ interface SelectedRow {
   sourceKind: "history" | "replay";
 }
 
-function getHostPinia(): any | null {
-  const el = document.querySelector("#app") as any;
+function getHostPinia(): unknown {
+  const el = document.querySelector("#app");
   return (
-    el?.__vue_app__?.config?.globalProperties?.$pinia ??
-    el?.__vue_app__?._context?.provides?.pinia ??
-    null
+    el?.__vue_app__?.config?.globalProperties?.["$pinia"] ??
+    el?.__vue_app__?._context?.provides?.["pinia"] ??
+    undefined
   );
 }
 
@@ -47,58 +78,95 @@ function getHostPinia(): any | null {
  */
 function getPiniaSelectedRows(): SelectedRow[] {
   const pinia = getHostPinia();
-  if (!pinia) return [];
+  if (!pinia || typeof pinia !== "object") return [];
 
-  const state = pinia?.state?.value ?? {};
-  const hash  = window.location.hash;
+  const pinaObj = pinia as Record<string, unknown>;
+  const stateValue = (
+    pinaObj["state"] as Record<string, unknown> | undefined
+  )?.["value"];
+  const state: Record<string, unknown> =
+    stateValue != null && typeof stateValue === "object"
+      ? (stateValue as Record<string, unknown>)
+      : {};
+  const hash = window.location.hash;
 
   if (hash === "#/http-history") {
-    const raw: any[] = [...(state["stores.http-history.state"]?.selectedRows ?? [])];
-    return raw.flatMap((edge) => {
+    const historyState = state["stores.http-history.state"];
+    const selectedRows =
+      historyState != null && typeof historyState === "object"
+        ? ((historyState as Record<string, unknown>)["selectedRows"] ?? [])
+        : [];
+    const raw: unknown[] = [
+      ...(Array.isArray(selectedRows) ? selectedRows : []),
+    ];
+    return raw.flatMap((item) => {
+      const edge = item as PiniaHistoryEdge;
       const req = edge?.node?.request;
       if (!req?.id) return [];
-      return [{
-        requestId:  String(req.id),
-        responseId: req.response?.id != null ? String(req.response.id) : undefined,
-        path:       req.path ?? undefined,
-        sourceKind: "history",
-      }];
+      return [
+        {
+          requestId: String(req.id),
+          responseId:
+            req.response?.id != null ? String(req.response.id) : undefined,
+          path: req.path ?? undefined,
+          sourceKind: "history" as const,
+        },
+      ];
     });
   }
 
   if (hash === "#/search") {
-    const raw: any[] = [...(state["stores.search.state"]?.selectedRows ?? [])];
-    return raw.flatMap((edge) => {
+    const searchState = state["stores.search.state"];
+    const searchRows =
+      searchState != null && typeof searchState === "object"
+        ? ((searchState as Record<string, unknown>)["selectedRows"] ?? [])
+        : [];
+    const raw: unknown[] = [...(Array.isArray(searchRows) ? searchRows : [])];
+    return raw.flatMap((item) => {
+      const edge = item as PiniaHistoryEdge;
       const node = edge?.node;
       if (!node?.id) return [];
-      return [{
-        requestId:  String(node.id),
-        responseId: node.response?.id != null ? String(node.response.id) : undefined,
-        path:       node.path ?? undefined,
-        sourceKind: "history",
-      }];
+      return [
+        {
+          requestId: String(node.id),
+          responseId:
+            node.response?.id != null ? String(node.response.id) : undefined,
+          path: node.path ?? undefined,
+          sourceKind: "history" as const,
+        },
+      ];
     });
   }
 
   if (hash === "#/sitemap") {
-    const raw: any[] = [...(state["stores.sitemap.state"]?.selectedRequests ?? [])];
-    return raw.flatMap((req) => {
+    const sitemapState = state["stores.sitemap.state"];
+    const selectedRequests =
+      sitemapState != null && typeof sitemapState === "object"
+        ? ((sitemapState as Record<string, unknown>)["selectedRequests"] ?? [])
+        : [];
+    const raw: unknown[] = [
+      ...(Array.isArray(selectedRequests) ? selectedRequests : []),
+    ];
+    return raw.flatMap((item) => {
+      const req = item as PiniaSitemapRequest;
       if (!req?.id) return [];
-      return [{
-        requestId:  String(req.id),
-        responseId: req.response?.id != null ? String(req.response.id) : undefined,
-        path:       req.path ?? undefined,
-        sourceKind: "history",
-      }];
+      return [
+        {
+          requestId: String(req.id),
+          responseId:
+            req.response?.id != null ? String(req.response.id) : undefined,
+          path: req.path ?? undefined,
+          sourceKind: "history" as const,
+        },
+      ];
     });
   }
 
   return [];
 }
 
-
 /**
-* Adds a saved-item mention (request or response) to the currently open
+ * Adds a saved-item mention (request or response) to the currently open
  * note, sharing the "no note open" guard and success toast across the
  * save-to-note actions below. `item` is a complete `SavedItem`, appended
  * directly into the note's JSON content on the backend.
@@ -396,7 +464,9 @@ export const saveRequestToNote = async (
         await addSavedItemToNote(sdk, saved);
         return;
       }
-      sdk.window.showToast("No request available to save", { variant: "warning" });
+      sdk.window.showToast("No request available to save", {
+        variant: "warning",
+      });
       return;
     }
 
@@ -450,10 +520,9 @@ export const saveRequestToNote = async (
       return;
     }
 
-    sdk.window.showToast(
-      "This action is not available on the current page.",
-      { variant: "warning" },
-    );
+    sdk.window.showToast("This action is not available on the current page.", {
+      variant: "warning",
+    });
   } catch (error) {
     sdk.window.showToast(`Error saving request to note: ${error}`, {
       variant: "error",
@@ -484,7 +553,8 @@ export const saveResponseToNote = async (
           kind: "response",
           refId: ctx.response.id,
           parentRequestId: ctx.request.id,
-          sourceKind: window.location.hash === "#/replay" ? "replay" : "history",
+          sourceKind:
+            window.location.hash === "#/replay" ? "replay" : "history",
           label: ctx.request.path,
         }),
       );
@@ -499,7 +569,9 @@ export const saveResponseToNote = async (
         await addSavedItemToNote(sdk, saved);
         return;
       }
-      sdk.window.showToast("No response available to save", { variant: "warning" });
+      sdk.window.showToast("No response available to save", {
+        variant: "warning",
+      });
       return;
     }
 
@@ -564,10 +636,9 @@ export const saveResponseToNote = async (
       return;
     }
 
-    sdk.window.showToast(
-      "This action is not available on the current page.",
-      { variant: "warning" },
-    );
+    sdk.window.showToast("This action is not available on the current page.", {
+      variant: "warning",
+    });
   } catch (error) {
     sdk.window.showToast(`Error saving response to note: ${error}`, {
       variant: "error",
