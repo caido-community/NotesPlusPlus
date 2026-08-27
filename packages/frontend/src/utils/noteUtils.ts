@@ -36,7 +36,6 @@ export function addParagraphToContent(
   };
 }
 
-
 /**
  * Creates a saved request/response mention content item. `item` is the
  * entire `SavedItem` — kind, refId, sourceKind, and so on — stored
@@ -52,16 +51,13 @@ export function buildSavedItemBlock(item: SavedItem): NoteContentItem {
 /**
  * Builds a SavedItem for an unsent Replay draft. Drafts have no stable
  * ID so the raw content and connection info are stored directly.
- *
- * Accepts both `isTls` and `isTLS` to accommodate different SDK shapes.
  */
 export function createDraftSavedItem(options: {
   request: {
     raw: string;
     host: string;
     port: number;
-    isTls?: boolean;
-    isTLS?: boolean;
+    isTls: boolean;
     path?: string;
   };
   session?: { id: string; name: string };
@@ -73,7 +69,7 @@ export function createDraftSavedItem(options: {
     draftRaw: options.request.raw,
     draftHost: options.request.host,
     draftPort: options.request.port,
-    draftIsTls: options.request.isTls ?? options.request.isTLS ?? false,
+    draftIsTls: options.request.isTls,
     replaySessionId: options.session?.id,
     sessionLabel: options.session?.name,
     label: options.request.path,
