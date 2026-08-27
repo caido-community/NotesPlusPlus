@@ -1,4 +1,4 @@
-import { type Note, type NoteContent } from "shared";
+import { type Note, type NoteContent, type NoteContentItem } from "shared";
 
 import { useSDK } from "@/plugins/sdk";
 
@@ -36,6 +36,15 @@ export const useNotesRepository = () => {
     const result = await sdk.backend.updateNote(path, updates);
     if (result.kind === "Error") {
       throw new Error(`Error updating note: ${result.error}`);
+    }
+
+    return result.value;
+  }
+
+  async function appendToNote(path: string, block: NoteContentItem) {
+    const result = await sdk.backend.appendToNote(path, block);
+    if (result.kind === "Error") {
+      throw new Error(`Error appending to note: ${result.error}`);
     }
 
     return result.value;
@@ -109,6 +118,7 @@ export const useNotesRepository = () => {
     getNote,
     createNote,
     updateNote,
+    appendToNote,
     deleteNote,
     createFolder,
     deleteFolder,

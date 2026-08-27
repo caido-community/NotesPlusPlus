@@ -1,4 +1,4 @@
-import { type Editor } from "@tiptap/core";
+import { type SuggestionProps } from "@tiptap/suggestion";
 import { VueRenderer } from "@tiptap/vue-3";
 import tippy, { type Instance, type Props } from "tippy.js";
 
@@ -10,16 +10,6 @@ import { type FrontendSDK } from "@/types";
 interface SessionItem {
   id: string;
   label: string;
-}
-
-interface SuggestionProps {
-  editor: Editor;
-  clientRect?: (() => DOMRect | undefined) | undefined;
-  event?: KeyboardEvent;
-  range?: { from: number; to: number };
-  command: (attrs: SessionItem) => void;
-  items: SessionItem[];
-  query: string;
 }
 
 export default function createSuggestion(sdk: FrontendSDK) {
@@ -47,7 +37,7 @@ export default function createSuggestion(sdk: FrontendSDK) {
       let popup: Instance<Props> | undefined = undefined;
 
       return {
-        onStart: (props: SuggestionProps) => {
+        onStart(props: SuggestionProps) {
           component = new VueRenderer(ReferenceList, {
             props,
             editor: props.editor,

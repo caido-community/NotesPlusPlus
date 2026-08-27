@@ -15,7 +15,7 @@ import { MarkdownHeading } from "@/components/content/editor/extensions/markdown
 import MarkdownStyling from "@/components/content/editor/extensions/markdown-styling";
 import { createFileMention } from "@/components/content/editor/extensions/mentions/mention-file";
 import { createSessionMention } from "@/components/content/editor/extensions/mentions/mention-request";
-import createSuggestion from "@/components/content/editor/extensions/mentions/suggestion";
+import { createSavedItemMention } from "@/components/content/editor/extensions/mentions/mention-saved-item";
 import { SlashCommands } from "@/components/content/editor/extensions/slash-commands";
 import { useSDK } from "@/plugins/sdk";
 import { injectEditorStyles } from "@/utils/injectEditorStyles";
@@ -23,9 +23,9 @@ import { injectEditorStyles } from "@/utils/injectEditorStyles";
 injectEditorStyles();
 
 const sdk = useSDK();
-const suggestion = createSuggestion(sdk);
-const SessionMention = createSessionMention(sdk);
 const FileMention = createFileMention(sdk);
+const SavedItemMention = createSavedItemMention(sdk);
+const SessionMention = createSessionMention(sdk);
 
 const props = defineProps<{
   content: NoteContent;
@@ -46,10 +46,10 @@ const editor = useEditor({
   extensions: [
     StarterKit.configure({ heading: false }),
     MarkdownHeading,
+    SessionMention,
     MarkdownStyling,
-    // @ts-expect-error - TipTap expects null for clientRect but we can't do it due to eslint rules
-    SessionMention.configure({ suggestion }),
     FileMention,
+    SavedItemMention,
     Placeholder.configure({ placeholder: "Empty note..." }),
     ImageExtension.configure({
       HTMLAttributes: { class: "caido-image" },

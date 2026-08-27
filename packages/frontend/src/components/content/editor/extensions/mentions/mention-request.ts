@@ -1,7 +1,12 @@
 import { Mention } from "@tiptap/extension-mention";
+import { PluginKey } from "@tiptap/pm/state";
+
+import createSuggestion from "./suggestion";
 
 import { type FrontendSDK } from "@/types";
 import { emitter } from "@/utils/eventBus";
+import { buildSavedItemBlock } from "@/utils/noteUtils";
+import { captureReplaySession } from "@/utils/savedItem";
 
 const styleId = "embedded-replay-editor-style";
 if (!document.getElementById(styleId)) {
@@ -26,18 +31,21 @@ if (!document.getElementById(styleId)) {
       border-color: var(--color-primary-500, #6366f1);
       box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
     }
-    .embedded-replay-label {
+    .embedded-replay-label,
+    .embedded-replay-migrate {
       position: absolute;
       top: 4px;
-      right: 4px;
-      background: var(--color-surface-800, #262626);
-      color: var(--color-surface-200, #e5e5e5);
       font-size: 12px;
       padding: 3px 8px;
       border-radius: 4px;
       z-index: 10;
       font-weight: 500;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    .embedded-replay-label {
+      right: 4px;
+      background: var(--color-surface-800, #262626);
+      color: var(--color-surface-200, #e5e5e5);
       cursor: pointer;
       transition: background 0.2s ease, color 0.2s ease;
     }
@@ -45,21 +53,182 @@ if (!document.getElementById(styleId)) {
       background: var(--color-primary-500, #6366f1);
       color: var(--color-surface-100, #fff);
     }
+    .embedded-replay-migrate {
+      left: 4px;
+      background: var(--color-warning-600, #d97706);
+      color: var(--color-surface-100, #fff);
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .embedded-replay-migrate:hover {
+      background: var(--color-warning-500, #f59e0b);
+    }
+    .embedded-replay-migrate:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
   `;
   document.head.appendChild(style);
 }
 
+interface SessionItem {
+  id: string;
+  label: string;
+}
+
 export const createSessionMention = (sdk: FrontendSDK) => {
+  const suggestion = createSuggestion(sdk);
+  let hasWarnedAboutLegacyMentions = false;
+
   return Mention.extend({
+    addOptions() {
+      const parent = this.parent?.();
+      return {
+        ...parent,
+        suggestion: {
+          ...parent?.suggestion,
+          ...suggestion,
+          pluginKey: new PluginKey("sessionMentionSuggestion"),
+          command: ({ editor, range, props }) => {
+            const item = props as SessionItem;
+
+            editor.chain().focus().deleteRange(range).run();
+
+            void (async () => {
+              try {
+                const savedItem = await captureReplaySession(
+                  sdk,
+                  item.id,
+                  item.label,
+                );
+
+                if (!savedItem) {
+                  sdk.window.showToast(
+                    "This session has no request to save yet",
+                    { variant: "warning" },
+                  );
+                  return;
+                }
+
+                const { $from } = editor.state.selection;
+                const insertPos = $from.end($from.depth) + 1;
+
+                editor
+                  .chain()
+                  .focus()
+                  .insertContentAt(insertPos, buildSavedItemBlock(savedItem))
+                  .run();
+              } catch (err) {
+                console.error("Error saving replay request from @:", err);
+                sdk.window.showToast("Couldn't save this request", {
+                  variant: "error",
+                });
+              }
+            })();
+          },
+        },
+      };
+    },
+
     addNodeView() {
-      return (node) => {
+      return ({ node, editor, getPos }) => {
         const container = document.createElement("div");
         container.className = "embedded-replay-editor";
 
         const label = document.createElement("div");
         label.className = "embedded-replay-label";
-        label.textContent = `Replay: ${node.node.attrs.label}`;
+        label.textContent = `Replay: ${node.attrs.label}`;
         container.appendChild(label);
+
+        // mention is deprecated in favor of savedItemMention (see
+        // mention-saved-item.ts), so every node rendered here offers an
+        // upgrade. Warn once per editor mount — without this a note with
+        // several legacy mentions shows this repeatedly.
+        if (!hasWarnedAboutLegacyMentions) {
+          hasWarnedAboutLegacyMentions = true;
+          sdk.window.showToast(
+            "This note has a legacy request reference. Click the Upgrade button to switch it to the newer format.",
+            { variant: "warning" },
+          );
+        }
+
+        const migrateButton = document.createElement("button");
+        migrateButton.className = "embedded-replay-migrate";
+        migrateButton.type = "button";
+        migrateButton.textContent = "Upgrade";
+        container.appendChild(migrateButton);
+
+        const resetUpgradeButton = () => {
+          migrateButton.disabled = false;
+          migrateButton.textContent = "Upgrade";
+        };
+
+        migrateButton.addEventListener("click", async (event) => {
+          event.stopPropagation();
+          migrateButton.disabled = true;
+          migrateButton.textContent = "Upgrading...";
+
+          try {
+            const upgraded = await captureReplaySession(
+              sdk,
+              node.attrs.id,
+              node.attrs.label,
+            );
+
+            if (!upgraded) {
+              sdk.window.showToast(
+                "Couldn't upgrade this item — the Replay session it points to no longer exists.",
+                { variant: "error" },
+              );
+              resetUpgradeButton();
+              return;
+            }
+
+            const pos = getPos();
+            if (typeof pos !== "number") {
+              resetUpgradeButton();
+              return;
+            }
+
+            const savedItemMentionType =
+              editor.state.schema.nodes.savedItemMention;
+
+            if (!savedItemMentionType) {
+              console.error("savedItemMention node type is not registered");
+              resetUpgradeButton();
+              return;
+            }
+
+            // mention is inline, savedItemMention is block-level, so the
+            // node can't be swapped in place — delete it and insert the
+            // new block right after its paragraph instead.
+            const $pos = editor.state.doc.resolve(pos);
+            const insertPos = $pos.end($pos.depth) + 1;
+
+            const tr = editor.state.tr;
+            tr.delete(pos, pos + node.nodeSize);
+            tr.insert(
+              tr.mapping.map(insertPos),
+              savedItemMentionType.create({ ...upgraded }),
+            );
+            editor.view.dispatch(tr);
+
+            sdk.window.showToast("Upgraded to the newer format.", {
+              variant: "success",
+            });
+          } catch (err) {
+            console.error("Error upgrading legacy mention:", err);
+            sdk.window.showToast("Couldn't upgrade this item.", {
+              variant: "error",
+            });
+            resetUpgradeButton();
+          }
+        });
+
+        migrateButton.addEventListener("dblclick", (event) => {
+          event.stopPropagation();
+        });
 
         const editorWrapper = document.createElement("div");
         editorWrapper.style.width = "100%";
@@ -122,22 +291,23 @@ export const createSessionMention = (sdk: FrontendSDK) => {
           }
         };
 
-        loadSessionData(node.node.attrs.id);
+        loadSessionData(node.attrs.id);
 
-        emitter.on("refreshEditors", () => {
-          loadSessionData(node.node.attrs.id);
-        });
+        const handleRefresh = () => {
+          loadSessionData(node.attrs.id);
+        };
+        emitter.on("refreshEditors", handleRefresh);
 
         container.addEventListener("dblclick", () => {
-          sdk.replay.closeTab(node.node.attrs.id);
-          sdk.replay.openTab(node.node.attrs.id);
+          sdk.replay.closeTab(node.attrs.id);
+          sdk.replay.openTab(node.attrs.id);
           sdk.navigation.goTo("/replay");
         });
 
         return {
           dom: container,
           destroy: () => {
-            emitter.off("refreshEditors");
+            emitter.off("refreshEditors", handleRefresh);
           },
         };
       };

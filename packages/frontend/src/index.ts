@@ -10,7 +10,8 @@ import type { FrontendSDK } from "./types";
 import App from "./views/App.vue";
 
 import {
-  sendReplaySessionToNote,
+  saveRequestToNote,
+  saveResponseToNote,
   sendSelectedTextToNote,
   showNoteModal,
   showSearchModal,
@@ -55,10 +56,16 @@ export const init = (sdk: FrontendSDK) => {
     run: () => sendSelectedTextToNote(sdk),
   });
 
-  sdk.commands.register("notesplusplus:send-replay-session", {
-    name: "Send Replay Session",
+  sdk.commands.register("notesplusplus:save-request", {
+    name: "Save Request to Note",
     group: "Notes++",
-    run: () => sendReplaySessionToNote(sdk),
+    run: (ctx) => saveRequestToNote(sdk, ctx),
+  });
+
+  sdk.commands.register("notesplusplus:save-response", {
+    name: "Save Response to Note",
+    group: "Notes++",
+    run: (ctx) => saveResponseToNote(sdk, ctx),
   });
 
   sdk.commands.register("notesplusplus:search-notes", {
@@ -69,19 +76,35 @@ export const init = (sdk: FrontendSDK) => {
 
   sdk.commandPalette.register("notesplusplus:floating-modal");
   sdk.commandPalette.register("notesplusplus:send-selected-text");
-  sdk.commandPalette.register("notesplusplus:send-replay-session");
+  sdk.commandPalette.register("notesplusplus:save-request");
+  sdk.commandPalette.register("notesplusplus:save-response");
   sdk.commandPalette.register("notesplusplus:search-notes");
-
-  sdk.menu.registerItem({
-    type: "Request",
-    commandId: "notesplusplus:send-replay-session",
-    leadingIcon: "fas fa-file-alt",
-  });
 
   sdk.menu.registerItem({
     type: "Request",
     commandId: "notesplusplus:send-selected-text",
     leadingIcon: "fas fa-file-alt",
+  });
+
+  // Save a request from a Search / HTTP History / Sitemap row.
+  sdk.menu.registerItem({
+    type: "RequestRow",
+    commandId: "notesplusplus:save-request",
+    leadingIcon: "fas fa-floppy-disk",
+  });
+
+  // Save a request from a Replay pane.
+  sdk.menu.registerItem({
+    type: "Request",
+    commandId: "notesplusplus:save-request",
+    leadingIcon: "fas fa-floppy-disk",
+  });
+
+  // Save the response shown in a response pane.
+  sdk.menu.registerItem({
+    type: "Response",
+    commandId: "notesplusplus:save-response",
+    leadingIcon: "fas fa-floppy-disk",
   });
 
   sdk.shortcuts.register("notesplusplus:floating-modal", ["cmd", "shift", "N"]);

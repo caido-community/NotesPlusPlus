@@ -2,6 +2,7 @@ import { getFileContent } from "./file";
 import { createFolder, deleteFolder } from "./folder";
 import { getLegacyNotes, migrateNote } from "./migration";
 import {
+  appendToNote,
   createNote,
   deleteNote,
   getNote,
@@ -17,12 +18,14 @@ import {
   dismissReminder,
   getReminders,
 } from "./reminder";
+import { getSavedItem } from "./savedItem";
 
 export {
   getTree,
   getNote,
   createNote,
   updateNote,
+  appendToNote,
   deleteNote,
   createFolder,
   deleteFolder,
@@ -36,4 +39,5 @@ export {
   createReminder,
   deleteReminder,
   dismissReminder,
+  getSavedItem,
 };

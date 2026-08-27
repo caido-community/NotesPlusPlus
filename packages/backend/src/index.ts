@@ -1,6 +1,7 @@
 import type { DefineAPI, SDK } from "caido:plugin";
 
 import {
+  appendToNote,
   createFolder,
   createNote,
   createReminder,
@@ -13,6 +14,7 @@ import {
   getLegacyNotes,
   getNote,
   getReminders,
+  getSavedItem,
   getTree,
   migrateNote,
   moveItem,
@@ -31,6 +33,7 @@ export type API = DefineAPI<{
   getNote: typeof getNote;
   createNote: typeof createNote;
   updateNote: typeof updateNote;
+  appendToNote: typeof appendToNote;
   deleteNote: typeof deleteNote;
   createFolder: typeof createFolder;
   deleteFolder: typeof deleteFolder;
@@ -44,6 +47,7 @@ export type API = DefineAPI<{
   createReminder: typeof createReminder;
   deleteReminder: typeof deleteReminder;
   dismissReminder: typeof dismissReminder;
+  getSavedItem: typeof getSavedItem;
 }>;
 
 export function init(sdk: SDK<API, BackendEvents>) {
@@ -51,6 +55,7 @@ export function init(sdk: SDK<API, BackendEvents>) {
   sdk.api.register("getNote", getNote);
   sdk.api.register("createNote", createNote);
   sdk.api.register("updateNote", updateNote);
+  sdk.api.register("appendToNote", appendToNote);
   sdk.api.register("deleteNote", deleteNote);
   sdk.api.register("createFolder", createFolder);
   sdk.api.register("deleteFolder", deleteFolder);
@@ -64,6 +69,7 @@ export function init(sdk: SDK<API, BackendEvents>) {
   sdk.api.register("createReminder", createReminder);
   sdk.api.register("deleteReminder", deleteReminder);
   sdk.api.register("dismissReminder", dismissReminder);
+  sdk.api.register("getSavedItem", getSavedItem);
 
   sdk.events.onProjectChange((sdk, project) => {
     sdk.api.send("notes++:projectChange", project?.getId());

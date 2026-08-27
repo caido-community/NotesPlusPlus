@@ -1,17 +1,22 @@
-import type { Folder, Note, NoteContentItem, NoteModalSaveData } from "shared";
+import type {
+  Folder,
+  Note,
+  NoteContent,
+  NoteContentItem,
+  NoteModalSaveData,
+} from "shared";
 import { computed, ref, watch } from "vue";
 
 import { useDraggable } from "@/composables/useDraggable";
 import { useSDK } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
 import type { ModalPosition } from "@/types";
-import { currentReplayTabData } from "@/utils/caido";
 import {
   addParagraphToContent,
-  createMention,
-  createNoteContentWithText,
+  buildSavedItemBlock,
   createTextParagraph,
 } from "@/utils/noteUtils";
+import { captureCurrentReplay } from "@/utils/savedItem";
 
 interface NoteModalOptions {
   initialPosition?: ModalPosition;
@@ -64,21 +69,25 @@ export function useNoteModal(options: NoteModalOptions = {}) {
       return;
     }
 
-    let paragraph = createTextParagraph(noteContent.value);
+    // The text is always its own paragraph. The saved item, if any, is a
+    // separate sibling block — `savedItemMention` is `group: "block"`, so
+    // nesting it inside the paragraph's content (alongside the text
+    // nodes) produces an invalid document that ProseMirror silently
+    // drops or "repairs" rather than erroring on.
+    const blocks: NoteContentItem[] = [createTextParagraph(noteContent.value)];
 
     if (attachContext.value && isReplayPage.value) {
-      const tabData = currentReplayTabData();
-      if (tabData.id) {
-        const contentItems: NoteContentItem[] = [
-          { type: "text", text: noteContent.value },
-          { type: "text", text: "\n" },
-          createMention(tabData.id, tabData.label || tabData.id),
-        ];
-
-        paragraph = {
-          type: "paragraph",
-          content: contentItems,
-        };
+      try {
+        const saved = await captureCurrentReplay(sdk);
+        if (saved) {
+          blocks.push(buildSavedItemBlock(saved));
+        } else {
+          sdk.window.showToast("No active replay session found", {
+            variant: "warning",
+          });
+        }
+      } catch (err) {
+        console.error("Error saving replay request to note:", err);
       }
     }
 
@@ -88,10 +97,10 @@ export function useNoteModal(options: NoteModalOptions = {}) {
       await notesStore.loadNote(selectedNotePath.value);
 
       if (notesStore.currentNote) {
-        const updatedContent = addParagraphToContent(
-          notesStore.currentNote.content,
-          paragraph,
-        );
+        let updatedContent = notesStore.currentNote.content;
+        for (const block of blocks) {
+          updatedContent = addParagraphToContent(updatedContent, block);
+        }
 
         notesStore.selectNote(selectedNotePath.value);
         await notesStore.updateNoteContent(
@@ -103,7 +112,7 @@ export function useNoteModal(options: NoteModalOptions = {}) {
       }
     } else {
       const rootPath = "/";
-      const noteData = createNoteContentWithText(noteContent.value);
+      const noteData: NoteContent = { type: "doc", content: blocks };
 
       const newNote = await notesStore.createNote(
         rootPath,

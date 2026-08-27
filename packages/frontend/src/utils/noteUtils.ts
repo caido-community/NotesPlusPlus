@@ -1,4 +1,10 @@
-import { type NoteContent, type NoteContentItem } from "shared";
+import {
+  type NoteContent,
+  type NoteContentItem,
+  type SavedItem,
+  type SavedItemKind,
+  type SavedItemSourceKind,
+} from "shared";
 
 /**
  * Creates a paragraph content item from text
@@ -31,24 +37,64 @@ export function addParagraphToContent(
 }
 
 /**
- * Creates a mention content item
+ * Creates a saved request/response mention content item. `item` is the
+ * entire `SavedItem` — kind, refId, sourceKind, and so on — stored
+ * directly as the node's `attrs` inside the note's own JSON document.
  */
-export function createMention(id: string, label: string): NoteContentItem {
+export function buildSavedItemBlock(item: SavedItem): NoteContentItem {
   return {
-    type: "mention",
-    attrs: {
-      id,
-      label: label || id,
-    },
+    type: "savedItemMention",
+    attrs: { ...item },
   };
 }
 
 /**
- * Creates a new note content with a text paragraph
+ * Builds a SavedItem for an unsent Replay draft. Drafts have no stable
+ * ID so the raw content and connection info are stored directly.
  */
-export function createNoteContentWithText(text: string): NoteContent {
+export function createDraftSavedItem(options: {
+  request: {
+    raw: string;
+    host: string;
+    port: number;
+    isTls: boolean;
+    path?: string;
+  };
+  session?: { id: string; name: string };
+}): SavedItem {
   return {
-    type: "doc",
-    content: [createTextParagraph(text)],
+    kind: "request",
+    refId: "",
+    sourceKind: "draft",
+    draftRaw: options.request.raw,
+    draftHost: options.request.host,
+    draftPort: options.request.port,
+    draftIsTls: options.request.isTls,
+    replaySessionId: options.session?.id,
+    sessionLabel: options.session?.name,
+    label: options.request.path,
+  };
+}
+
+/**
+ * Builds a SavedItem for a sent request or response (history, replay,
+ * or response). Use `createDraftSavedItem` for unsent drafts instead.
+ */
+export function createSavedItem(options: {
+  kind: SavedItemKind;
+  refId: string;
+  sourceKind: SavedItemSourceKind;
+  parentRequestId?: string;
+  session?: { id: string; name: string };
+  label?: string;
+}): SavedItem {
+  return {
+    kind: options.kind,
+    refId: options.refId,
+    sourceKind: options.sourceKind,
+    parentRequestId: options.parentRequestId,
+    replaySessionId: options.session?.id,
+    sessionLabel: options.session?.name,
+    label: options.label,
   };
 }
