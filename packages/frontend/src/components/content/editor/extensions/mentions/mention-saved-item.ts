@@ -274,7 +274,11 @@ export const createSavedItemMention = (sdk: FrontendSDK) => {
           }
 
           // For a draft, the session IS the draft — reopen by ID alone.
-          if (draftConnection && savedReplaySessionId && isMeaningfulSessionLabel(savedSessionLabel)) {
+          if (
+            draftConnection &&
+            savedReplaySessionId &&
+            isMeaningfulSessionLabel(savedSessionLabel)
+          ) {
             const existingDraftSession = sdk.replay
               .getSessions()
               .find((s) => s.id === savedReplaySessionId);

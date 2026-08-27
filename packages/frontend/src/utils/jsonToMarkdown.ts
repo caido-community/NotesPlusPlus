@@ -111,7 +111,10 @@ function processContentTokens(
   content: NoteContentItem[],
   httpContentMap: Map<string, string>,
   fileContentMap: Map<string, string>,
-  savedItemContentMap: Map<string, { raw: string; kind: string; label?: string }>,
+  savedItemContentMap: Map<
+    string,
+    { raw: string; kind: string; label?: string }
+  >,
 ): NoteContentItem[] {
   const result: NoteContentItem[] = [];
 
@@ -235,7 +238,10 @@ export async function convertTipTapToMarkdown(
 
   const httpContentMap = new Map<string, string>();
   const fileContentMap = new Map<string, string>();
-  const savedItemContentMap = new Map<string, { raw: string; kind: string; label?: string }>();
+  const savedItemContentMap = new Map<
+    string,
+    { raw: string; kind: string; label?: string }
+  >();
 
   const promises: Promise<void>[] = [];
 
