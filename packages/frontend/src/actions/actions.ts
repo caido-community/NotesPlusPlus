@@ -6,8 +6,7 @@ import NoteFloatModal from "@/components/shared/NoteFloatModal.vue";
 import NoteSearchModal from "@/components/shared/NoteSearchModal.vue";
 import { SDKPlugin } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
-import type { ActiveEntryWithRaw, FrontendSDK } from "@/types";
-import { decodeRawBlob } from "@/utils/httpEncoding";
+import type { FrontendSDK } from "@/types";
 import {
   addParagraphToContent,
   buildSavedItemBlock,
@@ -15,6 +14,7 @@ import {
   createSavedItem,
   createTextParagraph,
 } from "@/utils/noteUtils";
+import { captureCurrentReplay } from "@/utils/savedItem";
 
 // ---------------------------------------------------------------------------
 // Pinia host-app row extraction
@@ -166,12 +166,12 @@ function getPiniaSelectedRows(): SelectedRow[] {
 }
 
 /**
- * Adds a saved-item mention (request or response) to the currently open
- * note, sharing the "no note open" guard and success toast across the
- * save-to-note actions below. `item` is a complete `SavedItem`, appended
- * directly into the note's JSON content on the backend.
+ * Appends saved items to the open note as one batch, so a multi-row
+ * selection produces a single toast and a single tree refresh.
  */
-const addSavedItemToNote = async (sdk: FrontendSDK, item: SavedItem) => {
+const addSavedItemsToNote = async (sdk: FrontendSDK, items: SavedItem[]) => {
+  if (items.length === 0) return;
+
   const notesStore = useNotesStore();
   const notePath = notesStore.currentNotePath;
 
@@ -183,84 +183,22 @@ const addSavedItemToNote = async (sdk: FrontendSDK, item: SavedItem) => {
     return;
   }
 
-  const result = await notesStore.appendBlockToNote(
-    notePath,
-    buildSavedItemBlock(item),
-  );
-
-  if (!result) {
-    return;
+  for (const item of items) {
+    const result = await notesStore.appendBlockToNote(
+      notePath,
+      buildSavedItemBlock(item),
+    );
+    if (!result) return;
   }
 
-  const successNoun = item.kind === "response" ? "Response" : "Request";
-  sdk.window.showToast(`${successNoun} added to note ${notePath}`, {
+  const noun = items[0]?.kind === "response" ? "response" : "request";
+  const label = items.length > 1 ? `${items.length} ${noun}s` : `1 ${noun}`;
+  sdk.window.showToast(`${label} added to note ${notePath}`, {
     variant: "success",
   });
 
   await notesStore.refreshTree();
 };
-
-/**
- * Builds a SavedItem from the currently active Replay session.
- * Works for both sent requests and unsent drafts, and optionally their
- * associated response via activeEntry.request.response.id.
- * Returns undefined if there's no active session or entry.
- */
-export async function currentSelectedRequestData(
-  sdk: FrontendSDK,
-  kind: "request" | "response" = "request",
-): Promise<SavedItem | undefined> {
-  const currentSession = sdk.replay.getCurrentSession();
-  if (!currentSession) return undefined;
-
-  const sessionResponse = await sdk.graphql.replaySessionEntries({
-    id: currentSession.id,
-  });
-  const activeEntryId = sessionResponse?.replaySession?.activeEntry?.id;
-  if (!activeEntryId) return undefined;
-
-  const activeEntry = sessionResponse?.replaySession?.activeEntry;
-  const entry = sdk.replay.getEntry(activeEntryId);
-
-  if (kind === "response") {
-    const responseId = activeEntry?.request?.response?.id;
-    const requestId = activeEntry?.request?.id ?? entry.requestId;
-    if (!responseId || !requestId) return undefined;
-
-    return createSavedItem({
-      kind: "response",
-      refId: responseId,
-      parentRequestId: requestId,
-      sourceKind: "replay",
-      session: currentSession,
-      label: activeEntry?.request?.path,
-    });
-  }
-
-  if (!entry.requestId) {
-    const connection = activeEntry?.connection;
-    if (typeof connection?.host !== "string") return undefined;
-
-    return createDraftSavedItem({
-      request: {
-        raw: decodeRawBlob(
-          (activeEntry as unknown as ActiveEntryWithRaw)?.raw ?? "",
-        ),
-        host: connection.host,
-        port: connection.port,
-        isTLS: connection.isTLS,
-      },
-      session: currentSession,
-    });
-  }
-
-  return createSavedItem({
-    kind: "request",
-    refId: entry.requestId,
-    sourceKind: "replay",
-    session: currentSession,
-  });
-}
 
 /**
  * Shows the note modal for writing a new note
@@ -394,79 +332,53 @@ export const saveRequestToNote = async (
         return;
       }
 
-      const notesStore = useNotesStore();
-      const notePath = notesStore.currentNotePath;
-
-      if (!notePath) {
-        sdk.window.showToast(
-          "No note is currently open. Please open a note first.",
-          { variant: "warning" },
-        );
-        return;
-      }
-
-      for (const req of ctx.requests) {
-        await notesStore.appendBlockToNote(
-          notePath,
-          buildSavedItemBlock(
-            createSavedItem({
-              kind: "request",
-              refId: req.id,
-              sourceKind: "history",
-              label: req.path,
-            }),
-          ),
-        );
-      }
-
-      const count = ctx.requests.length;
-      sdk.window.showToast(
-        `${count} request${count > 1 ? "s" : ""} added to note`,
-        { variant: "success" },
+      await addSavedItemsToNote(
+        sdk,
+        ctx.requests.map((req) =>
+          createSavedItem({
+            kind: "request",
+            refId: req.id,
+            sourceKind: "history",
+            label: req.path,
+          }),
+        ),
       );
-
-      await notesStore.refreshTree();
       return;
     }
 
     if (ctx.type === "RequestContext") {
-      const currentSession = sdk.replay.getCurrentSession();
+      const currentSession = sdk.replay.getCurrentSession() ?? undefined;
 
-      if (ctx.request.type !== "RequestFull") {
-        await addSavedItemToNote(
-          sdk,
-          createDraftSavedItem({
-            request: ctx.request,
-            session: currentSession ?? undefined,
-          }),
-        );
-        return;
-      }
+      const item =
+        ctx.request.type === "RequestFull"
+          ? createSavedItem({
+              kind: "request",
+              refId: ctx.request.id,
+              sourceKind: "replay",
+              session: currentSession,
+              label: ctx.request.path,
+            })
+          : createDraftSavedItem({
+              request: ctx.request,
+              session: currentSession,
+            });
 
-      await addSavedItemToNote(
-        sdk,
-        createSavedItem({
-          kind: "request",
-          refId: ctx.request.id,
-          sourceKind: "replay",
-          session: currentSession ?? undefined,
-          label: ctx.request.path,
-        }),
-      );
+      await addSavedItemsToNote(sdk, [item]);
       return;
     }
 
     const hash = window.location.hash;
 
     if (hash === "#/replay") {
-      const saved = await currentSelectedRequestData(sdk, "request");
-      if (saved) {
-        await addSavedItemToNote(sdk, saved);
+      const saved = await captureCurrentReplay(sdk, "request");
+      if (!saved) {
+        sdk.window.showToast("No request available to save", {
+          variant: "warning",
+        });
         return;
       }
-      sdk.window.showToast("No request available to save", {
-        variant: "warning",
-      });
+
+      await addSavedItemsToNote(sdk, [saved]);
       return;
     }
 
@@ -485,38 +397,17 @@ export const saveRequestToNote = async (
         return;
       }
 
-      const notesStore = useNotesStore();
-      const notePath = notesStore.currentNotePath;
-
-      if (!notePath) {
-        sdk.window.showToast(
-          "No note is currently open. Please open a note first.",
-          { variant: "warning" },
-        );
-        return;
-      }
-
-      for (const row of rows) {
-        await notesStore.appendBlockToNote(
-          notePath,
-          buildSavedItemBlock(
-            createSavedItem({
-              kind: "request",
-              refId: row.requestId,
-              sourceKind: row.sourceKind,
-              label: row.path,
-            }),
-          ),
-        );
-      }
-
-      const count = rows.length;
-      sdk.window.showToast(
-        `${count} request${count > 1 ? "s" : ""} added to note`,
-        { variant: "success" },
+      await addSavedItemsToNote(
+        sdk,
+        rows.map((row) =>
+          createSavedItem({
+            kind: "request",
+            refId: row.requestId,
+            sourceKind: row.sourceKind,
+            label: row.path,
+          }),
+        ),
       );
-
-      await notesStore.refreshTree();
       return;
     }
 
@@ -546,32 +437,31 @@ export const saveResponseToNote = async (
   ctx: CommandContext,
 ) => {
   try {
+    const hash = window.location.hash;
+
     if (ctx.type === "ResponseContext") {
-      await addSavedItemToNote(
-        sdk,
+      await addSavedItemsToNote(sdk, [
         createSavedItem({
           kind: "response",
           refId: ctx.response.id,
           parentRequestId: ctx.request.id,
-          sourceKind:
-            window.location.hash === "#/replay" ? "replay" : "history",
+          sourceKind: hash === "#/replay" ? "replay" : "history",
           label: ctx.request.path,
         }),
-      );
+      ]);
       return;
     }
 
-    const hash = window.location.hash;
-
     if (hash === "#/replay") {
-      const saved = await currentSelectedRequestData(sdk, "response");
-      if (saved) {
-        await addSavedItemToNote(sdk, saved);
+      const saved = await captureCurrentReplay(sdk, "response");
+      if (!saved) {
+        sdk.window.showToast("No response available to save", {
+          variant: "warning",
+        });
         return;
       }
-      sdk.window.showToast("No response available to save", {
-        variant: "warning",
-      });
+
+      await addSavedItemsToNote(sdk, [saved]);
       return;
     }
 
@@ -590,9 +480,21 @@ export const saveResponseToNote = async (
         return;
       }
 
-      const rowsWithResponse = rows.filter((r) => r.responseId != null);
+      const saved = rows.flatMap((row) =>
+        row.responseId === undefined
+          ? []
+          : [
+              createSavedItem({
+                kind: "response",
+                refId: row.responseId,
+                parentRequestId: row.requestId,
+                sourceKind: row.sourceKind,
+                label: row.path,
+              }),
+            ],
+      );
 
-      if (rowsWithResponse.length === 0) {
+      if (saved.length === 0) {
         sdk.window.showToast(
           "The selected request(s) have no recorded response.",
           { variant: "warning" },
@@ -600,39 +502,7 @@ export const saveResponseToNote = async (
         return;
       }
 
-      const notesStore = useNotesStore();
-      const notePath = notesStore.currentNotePath;
-
-      if (!notePath) {
-        sdk.window.showToast(
-          "No note is currently open. Please open a note first.",
-          { variant: "warning" },
-        );
-        return;
-      }
-
-      for (const row of rowsWithResponse) {
-        await notesStore.appendBlockToNote(
-          notePath,
-          buildSavedItemBlock(
-            createSavedItem({
-              kind: "response",
-              refId: row.responseId!,
-              parentRequestId: row.requestId,
-              sourceKind: row.sourceKind,
-              label: row.path,
-            }),
-          ),
-        );
-      }
-
-      const count = rowsWithResponse.length;
-      sdk.window.showToast(
-        `${count} response${count > 1 ? "s" : ""} added to note`,
-        { variant: "success" },
-      );
-
-      await notesStore.refreshTree();
+      await addSavedItemsToNote(sdk, saved);
       return;
     }
 

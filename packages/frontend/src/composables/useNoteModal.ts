@@ -7,7 +7,6 @@ import type {
 } from "shared";
 import { computed, ref, watch } from "vue";
 
-import { currentSelectedRequestData } from "@/actions/actions";
 import { useDraggable } from "@/composables/useDraggable";
 import { useSDK } from "@/plugins/sdk";
 import { useNotesStore } from "@/stores/notes";
@@ -17,6 +16,7 @@ import {
   buildSavedItemBlock,
   createTextParagraph,
 } from "@/utils/noteUtils";
+import { captureCurrentReplay } from "@/utils/savedItem";
 
 interface NoteModalOptions {
   initialPosition?: ModalPosition;
@@ -78,7 +78,7 @@ export function useNoteModal(options: NoteModalOptions = {}) {
 
     if (attachContext.value && isReplayPage.value) {
       try {
-        const saved = await currentSelectedRequestData(sdk);
+        const saved = await captureCurrentReplay(sdk);
         if (saved) {
           blocks.push(buildSavedItemBlock(saved));
         } else {

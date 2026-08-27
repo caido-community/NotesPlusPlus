@@ -27,3 +27,12 @@ export function decodeRawBlob(base64: string): string {
     return "";
   }
 }
+
+type EntryWithRaw = { raw?: string };
+
+// The SDK types don't expose `raw` on a replay entry, so the cast lives here.
+// An empty result means "nothing to save", never an empty draft.
+export function decodeEntryRaw(activeEntry: unknown): string {
+  const raw = (activeEntry as EntryWithRaw | undefined)?.raw;
+  return raw === undefined ? "" : decodeRawBlob(raw);
+}

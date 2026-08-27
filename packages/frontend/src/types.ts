@@ -7,5 +7,3 @@ export interface ModalPosition {
   x: number;
   y: number;
 }
-
-export type ActiveEntryWithRaw = { raw?: string };

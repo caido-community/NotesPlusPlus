@@ -1,15 +1,12 @@
 import { Mention } from "@tiptap/extension-mention";
 import { PluginKey } from "@tiptap/pm/state";
 
-import { type ActiveEntryWithRaw, type FrontendSDK } from "@/types";
-import { emitter } from "@/utils/eventBus";
-import { decodeRawBlob } from "@/utils/httpEncoding";
-import {
-  createDraftSavedItem,
-  createSavedItem,
-  buildSavedItemBlock,
-} from "@/utils/noteUtils";
 import createSuggestion from "./suggestion";
+
+import { type FrontendSDK } from "@/types";
+import { emitter } from "@/utils/eventBus";
+import { buildSavedItemBlock } from "@/utils/noteUtils";
+import { captureReplaySession } from "@/utils/savedItem";
 
 const styleId = "embedded-replay-editor-style";
 if (!document.getElementById(styleId)) {
@@ -80,69 +77,11 @@ interface SessionItem {
   label: string;
 }
 
-/**
- * Resolves a legacy `mention` node's Replay session ID into the
- * `SavedItem` shape `savedItemMention` expects. Returns `undefined` if
- * the session no longer exists.
- */
-async function resolveToSavedItem(
-  sdk: FrontendSDK,
-  sessionId: string,
-  label: string | undefined,
-) {
-  const sessionResponse = await sdk.graphql.replaySessionEntries({
-    id: sessionId,
-  });
-  const activeEntryId = sessionResponse?.replaySession?.activeEntry?.id;
-
-  if (!activeEntryId) {
-    return undefined;
-  }
-
-  const liveSession = sdk.replay.getSessions().find((s) => s.id === sessionId);
-  const entry = sdk.replay.getEntry(activeEntryId);
-
-  if (!entry.requestId) {
-    const connection = sessionResponse?.replaySession?.activeEntry?.connection;
-    if (typeof connection?.host !== "string") {
-      return undefined;
-    }
-
-    return createDraftSavedItem({
-      request: {
-        raw: decodeRawBlob(
-          (
-            sessionResponse?.replaySession
-              ?.activeEntry as unknown as ActiveEntryWithRaw
-          )?.raw ?? "",
-        ),
-        host: connection.host,
-        port: connection.port,
-        isTLS: connection.isTLS,
-        path: label,
-      },
-      session: liveSession,
-    });
-  }
-
-  return createSavedItem({
-    kind: "request",
-    refId: entry.requestId,
-    sourceKind: "replay",
-    session: liveSession,
-    label,
-  });
-}
-
 export const createSessionMention = (sdk: FrontendSDK) => {
   const suggestion = createSuggestion(sdk);
   let hasWarnedAboutLegacyMentions = false;
 
   return Mention.extend({
-    // Mention.extend() defaults to a shared suggestion plugin key
-    // (literally "mention"), which collides if another Mention.extend()
-    // instance is also registered (see sessionTrigger). Give this one
-    // its own key.
     addOptions() {
       const parent = this.parent?.();
       return {
@@ -158,57 +97,18 @@ export const createSessionMention = (sdk: FrontendSDK) => {
 
             void (async () => {
               try {
-                const sessionResponse = await sdk.graphql.replaySessionEntries({
-                  id: item.id,
-                });
-                const activeEntryId =
-                  sessionResponse?.replaySession?.activeEntry?.id;
+                const savedItem = await captureReplaySession(
+                  sdk,
+                  item.id,
+                  item.label,
+                );
 
-                if (!activeEntryId) {
-                  sdk.window.showToast("Replay session is not available", {
-                    variant: "warning",
-                  });
+                if (!savedItem) {
+                  sdk.window.showToast(
+                    "This session has no request to save yet",
+                    { variant: "warning" },
+                  );
                   return;
-                }
-
-                const entry = sdk.replay.getEntry(activeEntryId);
-                const session = { id: item.id, name: item.label };
-                let savedItem;
-
-                if (!entry.requestId) {
-                  const connection =
-                    sessionResponse?.replaySession?.activeEntry?.connection;
-                  if (typeof connection?.host !== "string") {
-                    sdk.window.showToast(
-                      "This session has no request to save yet",
-                      { variant: "warning" },
-                    );
-                    return;
-                  }
-
-                  savedItem = createDraftSavedItem({
-                    request: {
-                      raw: decodeRawBlob(
-                        (
-                          sessionResponse?.replaySession
-                            ?.activeEntry as unknown as ActiveEntryWithRaw
-                        )?.raw ?? "",
-                      ),
-                      host: connection.host,
-                      port: connection.port,
-                      isTLS: connection.isTLS,
-                      path: item.label,
-                    },
-                    session,
-                  });
-                } else {
-                  savedItem = createSavedItem({
-                    kind: "request",
-                    refId: entry.requestId,
-                    sourceKind: "replay",
-                    session,
-                    label: item.label,
-                  });
                 }
 
                 const { $from } = editor.state.selection;
@@ -217,10 +117,7 @@ export const createSessionMention = (sdk: FrontendSDK) => {
                 editor
                   .chain()
                   .focus()
-                  .insertContentAt(insertPos, {
-                    type: "savedItemMention",
-                    attrs: { ...buildSavedItemBlock(savedItem).attrs },
-                  })
+                  .insertContentAt(insertPos, buildSavedItemBlock(savedItem))
                   .run();
               } catch (err) {
                 console.error("Error saving replay request from @:", err);
@@ -262,13 +159,18 @@ export const createSessionMention = (sdk: FrontendSDK) => {
         migrateButton.textContent = "Upgrade";
         container.appendChild(migrateButton);
 
+        const resetUpgradeButton = () => {
+          migrateButton.disabled = false;
+          migrateButton.textContent = "Upgrade";
+        };
+
         migrateButton.addEventListener("click", async (event) => {
           event.stopPropagation();
           migrateButton.disabled = true;
           migrateButton.textContent = "Upgrading...";
 
           try {
-            const upgraded = await resolveToSavedItem(
+            const upgraded = await captureReplaySession(
               sdk,
               node.attrs.id,
               node.attrs.label,
@@ -279,15 +181,13 @@ export const createSessionMention = (sdk: FrontendSDK) => {
                 "Couldn't upgrade this item — the Replay session it points to no longer exists.",
                 { variant: "error" },
               );
-              migrateButton.disabled = false;
-              migrateButton.textContent = "Upgrade";
+              resetUpgradeButton();
               return;
             }
 
             const pos = getPos();
             if (typeof pos !== "number") {
-              migrateButton.disabled = false;
-              migrateButton.textContent = "Upgrade";
+              resetUpgradeButton();
               return;
             }
 
@@ -296,8 +196,7 @@ export const createSessionMention = (sdk: FrontendSDK) => {
 
             if (!savedItemMentionType) {
               console.error("savedItemMention node type is not registered");
-              migrateButton.disabled = false;
-              migrateButton.textContent = "Upgrade";
+              resetUpgradeButton();
               return;
             }
 
@@ -323,8 +222,7 @@ export const createSessionMention = (sdk: FrontendSDK) => {
             sdk.window.showToast("Couldn't upgrade this item.", {
               variant: "error",
             });
-            migrateButton.disabled = false;
-            migrateButton.textContent = "Upgrade";
+            resetUpgradeButton();
           }
         });
 
